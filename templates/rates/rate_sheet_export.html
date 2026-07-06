@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Rate Sheet Export{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Rate Sheet Export</h5>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">Export / Email Rate Sheet</div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Customer Tariff</label>
+            <select name="tariff" class="form-select" required>
+              <option value="">— select tariff —</option>
+              {% for t in tariffs %}
+              <option value="{{ t.pk }}" {% if request.GET.tariff == t.pk|stringformat:'s' %}selected{% endif %}>
+                {{ t.company.name }} – {{ t.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Format</label>
+            <select name="format" class="form-select">
+              <option value="xlsx">Excel (.xlsx)</option>
+              <option value="csv">CSV</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Recipient Email(s) <small class="text-muted">(comma-separated)</small></label>
+            <input type="text" name="recipients" class="form-control" placeholder="carrier@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Cover Note</label>
+            <textarea name="note" class="form-control" rows="3" placeholder="Optional message to include in the email…"></textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" name="action" value="download" class="btn btn-outline-primary">
+              <i class="bi bi-download"></i> Download
+            </button>
+            <button type="submit" name="action" value="email" class="btn btn-primary">
+              <i class="bi bi-envelope"></i> Send Email
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">Export History</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Date</th><th>Tariff</th><th>Recipient</th><th>Format</th><th>Sent by</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5" class="text-muted text-center py-3">No exports yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

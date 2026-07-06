@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Origin Groups{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Origin Groups <span class="text-muted fs-6 fw-normal">{{ groups|length }} total</span></h5>
+</div>
+
+<p class="text-muted small mb-3">
+  Origin groups define ANI (caller) prefixes that trigger special rates.
+  When a CDR's calling number matches an origin group's prefixes,
+  any rate linked to that group takes priority over the standard rate.
+</p>
+
+{% for group in groups %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center py-2">
+    <strong>{{ group.name }}</strong>
+    {% if group.description %}<span class="text-muted small">{{ group.description }}</span>{% endif %}
+    <span class="badge bg-secondary">{{ group.dialcodes.count }} ANI prefix{{ group.dialcodes.count|pluralize:"es" }}</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="row g-0">
+      <!-- ANI Prefixes -->
+      <div class="col-md-4 border-end">
+        <div class="p-2 bg-light border-bottom small fw-semibold text-muted">ANI Prefixes</div>
+        <div class="p-2">
+          {% for dc in group.dialcodes.all %}
+            <span class="badge bg-light text-dark border me-1 mb-1">{{ dc.prefix }}</span>
+          {% empty %}
+            <span class="text-muted small">No prefixes</span>
+          {% endfor %}
+        </div>
+      </div>
+      <!-- Origin Rates -->
+      <div class="col-md-8">
+        <div class="p-2 bg-light border-bottom small fw-semibold text-muted">Rates using this group</div>
+        {% if group.rates.all %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Tariff</th>
+              <th>Destination</th>
+              <th>Prefix</th>
+              <th class="text-end">Rate/min</th>
+              <th>Billing</th>
+              <th>Effective</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rate in group.rates.all %}
+            <tr>
+              <td class="small">{{ rate.tariff.company.name }}</td>
+              <td class="small">{{ rate.destination.name }}</td>
+              <td><code>{{ rate.prefix }}</code></td>
+              <td class="text-end">{{ rate.rate_per_minute }}</td>
+              <td class="small">{{ rate.billing_increment_display }}</td>
+              <td class="small text-muted">{{ rate.effective_date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted small p-2 mb-0">No rates yet — import a rate notification to populate.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% empty %}
+<div class="alert alert-info">
+  No origin groups yet. Import a rate notification file that includes origin-based billing to create them.
+</div>
+{% endfor %}
+{% endblock %}

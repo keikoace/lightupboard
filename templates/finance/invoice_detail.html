@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'finance:invoice_list' %}">Invoices</a></li>
+    <li class="breadcrumb-item active">{{ invoice.invoice_number }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-0">Invoice {{ invoice.invoice_number }}</h4>
+    <small class="text-muted">
+      {{ invoice.company.name }}
+      {% if invoice.billing_profile %}&nbsp;&middot;&nbsp;{{ invoice.billing_profile.name }}{% endif %}
+      &nbsp;&middot;&nbsp;{{ invoice.issue_date }}
+    </small>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'finance:invoice_send' invoice.pk %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-send"></i> Send
+    </a>
+    <a href="{% url 'finance:invoice_print' invoice.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-printer"></i> Print / PDF
+    </a>
+    <a href="{% url 'finance:invoice_edit' invoice.pk %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-pencil"></i> Edit
+    </a>
+    <a href="{% url 'setup:company_profile' invoice.company.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-person-lines-fill"></i> Customer Profile
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  {# Left: invoice meta #}
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header">Invoice Details</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-6">Status</dt>
+          <dd class="col-6">
+            {% if invoice.status == 'paid' %}<span class="badge bg-success">Paid</span>
+            {% elif invoice.status == 'overdue' %}<span class="badge bg-danger">Overdue</span>
+            {% elif invoice.status == 'sent' %}<span class="badge bg-info">Sent</span>
+            {% elif invoice.status == 'draft' %}<span class="badge bg-secondary">Draft</span>
+            {% else %}<span class="badge bg-secondary">{{ invoice.get_status_display }}</span>{% endif %}
+          </dd>
+          <dt class="col-6">Type</dt><dd class="col-6">{{ invoice.get_invoice_type_display }}</dd>
+          <dt class="col-6">Customer</dt>
+          <dd class="col-6">
+            <a href="{% url 'setup:company_detail' invoice.company.pk %}">{{ invoice.company.name }}</a>
+            {% if invoice.company.customer_number %}
+            <br><small class="text-muted">No. {{ invoice.company.customer_number }}</small>
+            {% endif %}
+          </dd>
+          <dt class="col-6">Billing Entity</dt>
+          <dd class="col-6">{{ invoice.billing_profile.name|default:"—" }}</dd>
+          <dt class="col-6">Currency</dt><dd class="col-6">{{ invoice.currency }}</dd>
+          <dt class="col-6">Period</dt>
+          <dd class="col-6">{{ invoice.period_start }} – {{ invoice.period_end }}</dd>
+          <dt class="col-6">Issue Date</dt><dd class="col-6">{{ invoice.issue_date }}</dd>
+          {% if invoice.sent_at %}<dt class="col-6">Sent</dt><dd class="col-6">{{ invoice.sent_at|date:"Y-m-d H:i" }}</dd>{% endif %}
+          <dt class="col-6">Due Date</dt><dd class="col-6">{{ invoice.due_date }}</dd>
+          <dt class="col-6">VAT Rate</dt><dd class="col-6">{{ invoice.vat_rate }}%</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Totals</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-6">Subtotal</dt>
+          <dd class="col-6 text-end fw-bold">{{ invoice.currency }} {{ invoice.subtotal|floatformat:2 }}</dd>
+          <dt class="col-6">VAT {{ invoice.vat_rate }}%</dt>
+          <dd class="col-6 text-end">{{ invoice.currency }} {{ invoice.tax_amount|floatformat:2 }}</dd>
+          <dt class="col-6 fw-bold" style="color:var(--accent)">Total</dt>
+          <dd class="col-6 text-end fw-bold" style="color:var(--accent);font-size:1.1rem">
+            {{ invoice.currency }} {{ invoice.total_amount|floatformat:2 }}
+          </dd>
+          <dt class="col-6">Paid</dt>
+          <dd class="col-6 text-end text-success">{{ invoice.currency }} {{ invoice.amount_paid|floatformat:2 }}</dd>
+          <dt class="col-6 {% if invoice.balance_due > 0 %}text-danger{% endif %}">Balance Due</dt>
+          <dd class="col-6 text-end fw-bold {% if invoice.balance_due > 0 %}text-danger{% endif %}">
+            {{ invoice.currency }} {{ invoice.balance_due|floatformat:2 }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    {# Payments #}
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Payments</span>
+        <a href="{% url 'finance:payment_add' %}" class="btn btn-sm btn-outline-primary">+ Record</a>
+      </div>
+      <div class="card-body p-0">
+        {% if invoice.payments.all %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Date</th><th>Method</th><th class="text-end">Amount</th></tr></thead>
+          <tbody>
+            {% for p in invoice.payments.all %}
+            <tr>
+              <td>{{ p.payment_date }}</td>
+              <td>{{ p.get_method_display }}</td>
+              <td class="text-end text-success fw-bold">{{ p.currency }} {{ p.amount|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-muted text-center py-3 small">No payments recorded.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Right: invoice lines #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-list-ul me-1"></i> Invoice Lines</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-top">
+          <thead class="table-light">
+            <tr>
+              <th style="width:3rem">Qty</th>
+              <th>Description</th>
+              <th style="width:9rem">Period</th>
+              <th class="text-end" style="width:8rem">Amount {{ invoice.currency }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in invoice.lines.all %}
+            <tr>
+              <td class="text-center">{{ line.quantity }}</td>
+              <td>
+                <strong>{{ line.title }}</strong>
+                {% if line.description %}
+                <div class="text-muted small mt-1" style="white-space:pre-wrap">{{ line.description }}</div>
+                {% endif %}
+              </td>
+              <td class="small text-muted">
+                {% if line.period_start %}
+                {{ line.period_start|date:"d.m.Y" }}<br>{{ line.period_end|date:"d.m.Y" }}
+                {% endif %}
+              </td>
+              <td class="text-end fw-bold">{{ line.amount|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No lines on this invoice.</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="table-light">
+              <td colspan="3" class="text-end">Subtotal</td>
+              <td class="text-end fw-bold">{{ invoice.subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr class="table-light">
+              <td colspan="3" class="text-end">VAT {{ invoice.vat_rate }}%</td>
+              <td class="text-end">{{ invoice.tax_amount|floatformat:2 }}</td>
+            </tr>
+            <tr style="border-top:2px solid var(--accent)">
+              <td colspan="3" class="text-end fw-bold" style="color:var(--accent)">Total {{ invoice.currency }}</td>
+              <td class="text-end fw-bold" style="color:var(--accent);font-size:1.1rem">
+                {{ invoice.total_amount|floatformat:2 }}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

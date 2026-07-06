@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Companies – Setup{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Companies <span class="text-muted fw-normal small">({{ companies.count }})</span></h5>
+  <a href="{% url 'setup:company_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-building-add"></i> Add Company
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm" placeholder="Search name…">
+      </div>
+      <div class="col-auto">
+        <select name="role" class="form-select form-select-sm">
+          <option value="">All roles</option>
+          <option value="customer" {% if request.GET.role == 'customer' %}selected{% endif %}>Customer</option>
+          <option value="supplier" {% if request.GET.role == 'supplier' %}selected{% endif %}>Supplier</option>
+          <option value="both" {% if request.GET.role == 'both' %}selected{% endif %}>Both</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="am" class="form-select form-select-sm">
+          <option value="">All AMs</option>
+          <option value="none" {% if request.GET.am == 'none' %}selected{% endif %}>— Unassigned —</option>
+          <option value="me" {% if request.GET.am == 'me' %}selected{% endif %}>My accounts</option>
+          {% for u in all_users %}
+          <option value="{{ u.pk }}" {% if request.GET.am == u.pk|stringformat:"s" %}selected{% endif %}>
+            {{ u.get_full_name|default:u.username }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Filter</button>
+        <a href="{% url 'setup:company_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th><th>Role</th><th>AM</th><th>Currency</th>
+          <th>Credit Limit</th><th>Terms</th><th>Active</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for company in companies %}
+        <tr>
+          <td><a href="{% url 'setup:company_detail' company.pk %}">{{ company.name }}</a></td>
+          <td>
+            {% if company.role == 'customer' %}<span class="badge bg-info text-dark">Customer</span>
+            {% elif company.role == 'supplier' %}<span class="badge bg-warning text-dark">Supplier</span>
+            {% else %}<span class="badge bg-secondary">Both</span>{% endif %}
+          </td>
+          <td>
+            {% for am in company.account_managers.all %}
+              <span class="badge bg-secondary me-1" title="{{ am.get_full_name|default:am.username }}">
+                {{ am.get_full_name|default:am.username|truncatechars:12 }}
+              </span>
+            {% empty %}
+              <span class="text-muted small">—</span>
+            {% endfor %}
+          </td>
+          <td>{{ company.currency }}</td>
+          <td class="text-end">{{ company.credit_limit|floatformat:2 }}</td>
+          <td class="text-center">{{ company.payment_terms|default:"—" }}</td>
+          <td>
+            {% if company.is_active %}<span class="badge bg-success">Yes</span>
+            {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'setup:company_profile' company.pk %}" class="btn btn-sm btn-outline-primary" title="Profile"><i class="bi bi-person-lines-fill"></i></a>
+            <a href="{% url 'setup:company_detail' company.pk %}" class="btn btn-sm btn-outline-secondary" title="Detail"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'setup:company_edit' company.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'setup:company_delete' company.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No companies found. <a href="{% url 'setup:company_add' %}">Add one.</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

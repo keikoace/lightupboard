@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Invoicing{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Invoicing</h5>
+  <a href="{% url 'finance:invoice_generate' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-receipt"></i> Generate Invoice
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All statuses</option>
+          <option value="draft">Draft</option><option value="sent">Sent</option>
+          <option value="paid">Paid</option><option value="overdue">Overdue</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Invoice #</th><th>Customer</th><th>Period</th><th>Due</th>
+          <th class="text-end">Total</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td><strong>{{ inv.invoice_number }}</strong></td>
+          <td>{{ inv.company.name }}</td>
+          <td class="small">{{ inv.period_start }} – {{ inv.period_end }}</td>
+          <td>{{ inv.due_date }}</td>
+          <td class="text-end">{{ inv.currency }} {{ inv.total_amount|floatformat:2 }}</td>
+          <td>
+            {% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>
+            {% elif inv.status == 'overdue' %}<span class="badge bg-danger">Overdue</span>
+            {% elif inv.status == 'sent' %}<span class="badge bg-primary">Sent</span>
+            {% else %}<span class="badge bg-secondary">Draft</span>{% endif %}
+          </td>
+          <td class="d-flex gap-1">
+            <a href="{% url 'finance:invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary" title="View / Send"><i class="bi bi-envelope"></i></a>
+            <a href="{% url 'finance:invoice_print' inv.pk %}" class="btn btn-sm btn-outline-secondary" title="Print / PDF" target="_blank"><i class="bi bi-printer"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No invoices yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

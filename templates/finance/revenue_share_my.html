@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}My Revenue Share{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0"><i class="bi bi-pie-chart me-1"></i> My Revenue Share</h5>
+    <div class="text-muted small mt-1">{{ am.get_full_name|default:am.username }}</div>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    {% if fx_date %}
+    <span class="text-muted small"><i class="bi bi-currency-exchange me-1"></i> FX: {{ fx_date }} &mdash; all amounts in {{ display_currency }}</span>
+    {% else %}
+    <span class="badge bg-warning text-dark small">No FX rates — run fetch_exchange_rates</span>
+    {% endif %}
+    {% if request.user.is_superuser %}
+    <a href="{% url 'finance:all_revenue_share' %}?year={{ year }}&month={{ month }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-people me-1"></i> All AMs
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Period filter -->
+<form method="get" class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Year</label>
+        <select name="year" class="form-select form-select-sm">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Month</label>
+        <select name="month" class="form-select form-select-sm">
+          {% for m_num, m_name in months %}
+          <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      </div>
+      <div class="col text-end text-muted small">{{ period_start|date:"F Y" }}</div>
+    </div>
+  </div>
+</form>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="small text-muted mb-1">Total Share</div>
+        <div class="fs-4 fw-bold" style="color:var(--accent)">
+          {{ totals.total_share_eur|floatformat:2 }} {{ display_currency }}
+        </div>
+        <div class="small text-muted">CDR + Billable Items</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="small text-muted mb-1">CDR Traffic Share</div>
+        <div class="fs-4 fw-bold text-success">{{ totals.cdr_share_eur|floatformat:2 }}</div>
+        <div class="small text-muted">from {{ totals.cdr_profit_eur|floatformat:2 }} profit</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="small text-muted mb-1">Billable Items Share</div>
+        <div class="fs-4 fw-bold text-info">{{ totals.billable_share_eur|floatformat:2 }}</div>
+        <div class="small text-muted">from {{ totals.billable_eur|floatformat:2 }} monthly fees</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="small text-muted mb-1">Traffic Volume</div>
+        <div class="fs-4 fw-bold">{{ totals.minutes|floatformat:0 }}</div>
+        <div class="small text-muted">minutes &bull; {{ totals.calls }} calls</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rate legend -->
+<div class="alert alert-light border mb-3 py-2 small">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong>Customer AM</strong>: 20% of CDR profit + 20% of monthly billable items &nbsp;&bull;&nbsp;
+  <strong>Supplier AM</strong>: 10% of CDR profit &nbsp;&bull;&nbsp;
+  <strong>Both sides</strong>: 20% + 10% = 30% of CDR profit
+</div>
+
+<!-- Per-company breakdown -->
+<div class="card">
+  <div class="card-header py-2 fw-semibold">
+    <i class="bi bi-table me-1"></i> Breakdown by Account
+  </div>
+  <div class="card-body p-0" style="overflow-x:auto">
+    <table class="table table-hover table-sm mb-0 align-middle" style="min-width:820px;font-size:.87rem">
+      <thead class="table-light">
+        <tr>
+          <th>Company</th>
+          <th class="text-center">Your Role</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">CDR Profit (€)</th>
+          <th class="text-center">Rate</th>
+          <th class="text-end">CDR Share (€)</th>
+          <th class="text-end">Billable (€/mo)</th>
+          <th class="text-end">Billable Share (€)</th>
+          <th class="text-end fw-bold">Total Share (€)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="fw-semibold">
+            <a href="{% url 'setup:company_detail' row.company.pk %}" class="text-decoration-none">{{ row.company.name }}</a>
+          </td>
+          <td class="text-center">
+            {% if row.role == 'both' %}
+            <span class="badge" style="background:#fef3c7;color:#92400e">Customer + Supplier</span>
+            {% elif row.role == 'customer' %}
+            <span class="badge" style="background:#dbeafe;color:#1e40af">Customer AM</span>
+            {% else %}
+            <span class="badge" style="background:#f0fdf4;color:#166534">Supplier AM</span>
+            {% endif %}
+          </td>
+          <td class="text-end text-muted">{{ row.minutes|floatformat:1 }}</td>
+          <td class="text-end">{{ row.cdr_profit_eur|floatformat:2 }}</td>
+          <td class="text-center fw-semibold" style="color:var(--accent)">
+            {% if row.role == 'both' %}30%
+            {% elif row.role == 'customer' %}20%
+            {% else %}10%{% endif %}
+          </td>
+          <td class="text-end text-success fw-semibold">{{ row.cdr_share_eur|floatformat:2 }}</td>
+          <td class="text-end text-muted">
+            {% if row.billable_eur %}{{ row.billable_eur|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end text-info">
+            {% if row.billable_share_eur %}{{ row.billable_share_eur|floatformat:2 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end fw-bold" style="color:var(--accent)">{{ row.total_share_eur|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-5">
+            <i class="bi bi-pie-chart" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+            No managed accounts with traffic in {{ period_start|date:"F Y" }}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="3">Total</td>
+          <td class="text-end">{{ totals.cdr_profit_eur|floatformat:2 }}</td>
+          <td></td>
+          <td class="text-end text-success">{{ totals.cdr_share_eur|floatformat:2 }}</td>
+          <td class="text-end">{{ totals.billable_eur|floatformat:2 }}</td>
+          <td class="text-end text-info">{{ totals.billable_share_eur|floatformat:2 }}</td>
+          <td class="text-end" style="color:var(--accent)">{{ totals.total_share_eur|floatformat:2 }} {{ display_currency }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% if rows %}
+<div class="mt-2 text-muted small">
+  <i class="bi bi-info-circle me-1"></i>
+  CDR profit is converted to EUR using ECB rates{% if fx_date %} ({{ fx_date }}){% endif %} before applying the share percentage.
+  Billable Items shows active monthly recurring charges only.
+</div>
+{% endif %}
+{% endblock %}

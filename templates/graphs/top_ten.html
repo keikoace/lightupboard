@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Top Ten for Week{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Top Ten for Week</h5>
+  <span class="text-muted small">w/c {{ week_start }}</span>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="metric" class="form-select form-select-sm">
+          <option value="minutes"  {% if metric == 'minutes' %}selected{% endif %}>By Minutes</option>
+          <option value="revenue"  {% if metric == 'revenue' %}selected{% endif %}>By Revenue</option>
+          <option value="gp"       {% if metric == 'gp' %}selected{% endif %}>By Gross Profit</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="group" class="form-select form-select-sm">
+          <option value="destination" {% if group_by == 'destination' %}selected{% endif %}>Destination</option>
+          <option value="customer"    {% if group_by == 'customer' %}selected{% endif %}>Customer</option>
+          <option value="supplier"    {% if group_by == 'supplier' %}selected{% endif %}>Supplier</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">Top 10 Table</div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light"><tr><th>#</th><th>Name</th><th class="text-end">Value</th></tr></thead>
+          <tbody>
+            {% for row in rows %}
+            <tr>
+              <td class="text-muted">{{ forloop.counter }}</td>
+              <td>{{ row.name }}</td>
+              <td class="text-end fw-semibold" style="color:var(--accent)">{{ row.val_label }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="3" class="text-center text-muted py-4">No CDR data for this week yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">Chart</div>
+      <div class="card-body">
+        <canvas id="topTenChart" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const labels = {{ labels_json|safe }};
+const values = {{ values_json|safe }};
+
+new Chart(document.getElementById('topTenChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{ label: '{{ metric }}', data: values, backgroundColor: 'rgba(13,110,253,0.75)' }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}

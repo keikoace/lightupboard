@@ -1,0 +1,94 @@
+{% extends "portal/base.html" %}
+{% block title %}Account — {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <h4 class="mb-0 fw-bold" style="color:#1a4f8a"><i class="bi bi-building me-2"></i>Account Information</h4>
+  <div class="text-muted small mt-1">Read-only view of your account details</div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-2">Company Details</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Company Name</dt>
+          <dd class="col-7 fw-semibold">{{ company.name }}</dd>
+
+          {% if company.customer_number %}
+          <dt class="col-5 text-muted">Customer #</dt>
+          <dd class="col-7" style="font-family:monospace">{{ company.customer_number }}</dd>
+          {% endif %}
+
+          {% if company.address %}
+          <dt class="col-5 text-muted">Address</dt>
+          <dd class="col-7">{{ company.address|linebreaksbr }}</dd>
+          {% endif %}
+
+          {% if company.country %}
+          <dt class="col-5 text-muted">Country</dt>
+          <dd class="col-7">{{ company.country }}</dd>
+          {% endif %}
+
+          {% if company.email %}
+          <dt class="col-5 text-muted">Email</dt>
+          <dd class="col-7"><a href="mailto:{{ company.email }}" class="text-decoration-none">{{ company.email }}</a></dd>
+          {% endif %}
+
+          {% if company.phone %}
+          <dt class="col-5 text-muted">Phone</dt>
+          <dd class="col-7">{{ company.phone }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-2">Billing &amp; Terms</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Billing Currency</dt>
+          <dd class="col-7 fw-semibold">{{ company.currency }}</dd>
+
+          {% if company.payment_terms %}
+          <dt class="col-5 text-muted">Payment Terms</dt>
+          <dd class="col-7">{{ company.get_payment_terms_display }}</dd>
+          {% endif %}
+
+          <dt class="col-5 text-muted">VAT Exempt</dt>
+          <dd class="col-7">{% if company.vat_exempt %}Yes{% else %}No{% endif %}</dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if ams %}
+    <div class="card mt-3">
+      <div class="card-header py-2">Your Account Manager{{ ams.count|pluralize }}</div>
+      <div class="card-body">
+        {% for am in ams %}
+        <div class="d-flex align-items-center gap-2 {% if not forloop.last %}mb-2{% endif %}">
+          <div class="rounded-circle d-flex align-items-center justify-content-center"
+               style="width:36px;height:36px;background:#dbeafe;color:#1d4ed8;font-weight:700;font-size:.85rem;flex-shrink:0">
+            {{ am.first_name|first|upper }}{{ am.last_name|first|upper }}
+          </div>
+          <div>
+            <div class="fw-semibold small">{{ am.get_full_name|default:am.username }}</div>
+            {% if am.email %}<div class="text-muted" style="font-size:.78rem"><a href="mailto:{{ am.email }}" class="text-decoration-none text-muted">{{ am.email }}</a></div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="alert mt-4" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af">
+  <i class="bi bi-info-circle me-1"></i>
+  To update your account details, please contact your account manager or email
+  <a href="mailto:info@lightupnet.de" style="color:#1e40af">info@lightupnet.de</a>.
+</div>
+{% endblock %}

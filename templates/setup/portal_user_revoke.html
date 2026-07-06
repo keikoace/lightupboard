@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Revoke Portal Access — {{ portal_user.username }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'setup:portal_user_list' %}">Portal Users</a></li>
+    <li class="breadcrumb-item active">Revoke Access</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card border-danger">
+      <div class="card-header fw-semibold text-danger">
+        <i class="bi bi-person-x me-1"></i> Revoke Portal Access
+      </div>
+      <div class="card-body">
+        <p>
+          Remove portal access for <strong>{{ portal_user.username }}</strong>
+          {% if portal_user.get_full_name %}({{ portal_user.get_full_name }}){% endif %}?
+        </p>
+        {% if companies %}
+        <p class="text-muted small">
+          They currently have access to:
+          {% for co in companies %}<strong>{{ co.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.
+        </p>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          {% if can_delete %}
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="delete_user" value="1" id="deleteUser">
+            <label class="form-check-label text-danger" for="deleteUser">
+              Also permanently delete this user account
+            </label>
+          </div>
+          {% else %}
+          <div class="alert alert-warning small py-2 mb-3">
+            <i class="bi bi-shield-lock me-1"></i>
+            This is a staff or superuser account — the account cannot be deleted here, only portal access will be removed.
+          </div>
+          {% endif %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">Revoke Access</button>
+            <a href="{% url 'setup:portal_user_list' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Multi-Invoice Email{% endblock %}
+
+{% block content %}
+<h5 class="mb-3"><i class="bi bi-send me-1"></i> Multi-Invoice Email</h5>
+<p class="text-muted small">Select customers below and send all their unsent draft invoices in one batch.</p>
+
+{% if results %}
+<!-- ── Results panel ── -->
+<div class="alert {% if error_count %}alert-warning{% else %}alert-success{% endif %} mb-3">
+  <i class="bi bi-{% if error_count %}exclamation-triangle{% else %}check-circle{% endif %} me-1"></i>
+  Sent <strong>{{ sent_count }}</strong> invoice(s).
+  {% if error_count %}<strong>{{ error_count }}</strong> failed.{% endif %}
+</div>
+<div class="card mb-4">
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Customer</th><th>Invoice #</th><th>To</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td>{{ r.company }}</td>
+          <td>{{ r.invoice_number }}</td>
+          <td class="text-muted small">{{ r.to_email }}</td>
+          <td>
+            {% if r.ok is True %}
+              <span class="badge bg-success"><i class="bi bi-check"></i> Sent</span>
+            {% elif r.ok is False %}
+              <span class="badge bg-danger"><i class="bi bi-x"></i> Failed</span>
+              <span class="text-danger small ms-1">{{ r.error }}</span>
+            {% else %}
+              <span class="badge bg-secondary">Skipped</span>
+              <span class="text-muted small ms-1">{{ r.error }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Select Customers</span>
+      <label class="form-check mb-0">
+        <input type="checkbox" id="selectAll" class="form-check-input"> Select all
+      </label>
+    </div>
+    <div class="card-body p-0" style="max-height:45vh;overflow-y:auto">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th style="width:40px"></th>
+            <th>Customer</th>
+            <th>Email</th>
+            <th class="text-center">Unsent Invoices</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in company_rows %}
+          <tr {% if not row.unsent %}class="text-muted"{% endif %}>
+            <td>
+              <input type="checkbox" name="customers" value="{{ row.company.pk }}"
+                class="cust-check"
+                {% if not row.unsent %}disabled title="No unsent invoices"{% endif %}>
+            </td>
+            <td>{{ row.company.name }}</td>
+            <td class="small">{{ row.company.email|default:"—" }}</td>
+            <td class="text-center">
+              {% if row.unsent %}
+                <span class="badge bg-primary">{{ row.unsent }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted py-3">No customers found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header py-2 fw-semibold">Email Options</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label">Subject <span class="text-muted small">(use {company} or {invoice} as placeholders)</span></label>
+        <input type="text" name="subject" class="form-control" value="Invoice from LightUpNet – {invoice}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Message <span class="text-muted small">(leave blank for default)</span></label>
+        <textarea name="body" class="form-control" rows="3" placeholder="Leave blank for default invoice notification message."></textarea>
+      </div>
+      <div class="form-check">
+        <input type="checkbox" class="form-check-input" name="attach_pdf" id="attachPdf" checked>
+        <label class="form-check-label" for="attachPdf">Attach invoice as HTML file</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary" id="sendBtn" disabled>
+      <i class="bi bi-send"></i> Send to Selected
+    </button>
+    <span class="text-muted small align-self-center" id="selCount"></span>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const checks  = document.querySelectorAll('.cust-check');
+  const sendBtn = document.getElementById('sendBtn');
+  const selCount = document.getElementById('selCount');
+  const allCb   = document.getElementById('selectAll');
+
+  function updateBtn() {
+    const n = document.querySelectorAll('.cust-check:checked').length;
+    sendBtn.disabled = (n === 0);
+    selCount.textContent = n > 0 ? `${n} customer(s) selected` : '';
+  }
+
+  checks.forEach(cb => cb.addEventListener('change', updateBtn));
+
+  allCb.addEventListener('change', function() {
+    checks.forEach(cb => { if (!cb.disabled) cb.checked = allCb.checked; });
+    updateBtn();
+  });
+})();
+</script>
+{% endblock %}

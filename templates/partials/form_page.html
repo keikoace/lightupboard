@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    {% for crumb in breadcrumbs %}
+      {% if forloop.last %}
+        <li class="breadcrumb-item active">{{ crumb.label }}</li>
+      {% else %}
+        <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
+      {% endif %}
+    {% endfor %}
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="{{ form_width|default:'col-lg-7' }}">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">{{ page_title }}</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {{ form|crispy }}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg"></i> {{ submit_label|default:"Save" }}
+            </button>
+            <a href="{{ cancel_url }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

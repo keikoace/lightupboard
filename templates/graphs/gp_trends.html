@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}GP Trends{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Gross Profit Trends</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="date" name="from" value="{{ from_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <input type="date" name="to" value="{{ to_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <select name="granularity" class="form-select form-select-sm">
+          <option value="day"   {% if request.GET.granularity != 'week' and request.GET.granularity != 'month' %}selected{% endif %}>Daily</option>
+          <option value="week"  {% if request.GET.granularity == 'week' %}selected{% endif %}>Weekly</option>
+          <option value="month" {% if request.GET.granularity == 'month' %}selected{% endif %}>Monthly</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <canvas id="gpChart" height="90"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+new Chart(document.getElementById('gpChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: {{ labels_json|safe }},
+    datasets: [
+      { label: 'Revenue', data: {{ rev_json|safe }},  backgroundColor: 'rgba(25,135,84,0.7)' },
+      { label: 'Cost',    data: {{ cost_json|safe }}, backgroundColor: 'rgba(220,53,69,0.7)' },
+      { label: 'GP',      data: {{ gp_json|safe }},   type: 'line', borderColor: '#0d6efd', fill: false, tension: 0.3, pointRadius: 2 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true } }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Import Log #{{ log.pk }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{% url 'email_import:rule_list' %}" class="btn btn-sm btn-outline-secondary">← Back</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header fw-semibold">Import Log #{{ log.pk }}</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <table class="table table-sm">
+          <tr><th>Time</th><td>{{ log.processed_at }}</td></tr>
+          <tr><th>Rule</th><td>{{ log.rule.name|default:"—" }}</td></tr>
+          <tr><th>From</th><td>{{ log.email_from }}</td></tr>
+          <tr><th>Subject</th><td>{{ log.email_subject }}</td></tr>
+          <tr><th>Attachment</th><td>{{ log.attachment_name }}</td></tr>
+          <tr><th>Status</th><td>
+            {% if log.status == 'success' %}<span class="badge bg-success">Success</span>
+            {% elif log.status == 'error' %}<span class="badge bg-danger">Error</span>
+            {% else %}<span class="badge bg-secondary">Skipped</span>{% endif %}
+          </td></tr>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <table class="table table-sm">
+          <tr><th>Destinations created</th><td>{{ log.destinations_created }}</td></tr>
+          <tr><th>Standard rates created</th><td>{{ log.std_rates_created }}</td></tr>
+          <tr><th>Standard rates updated</th><td>{{ log.std_rates_updated }}</td></tr>
+          <tr><th>Origin groups created</th><td>{{ log.origin_groups_created }}</td></tr>
+          <tr><th>Origin rates created</th><td>{{ log.origin_rates_created }}</td></tr>
+          <tr><th>Origin rates updated</th><td>{{ log.origin_rates_updated }}</td></tr>
+          <tr><th>Skipped</th><td>{{ log.skipped }}</td></tr>
+        </table>
+      </div>
+    </div>
+    {% if log.error_message %}
+    <div class="alert alert-danger mt-2">
+      <strong>Error:</strong>
+      <pre class="mb-0 small">{{ log.error_message }}</pre>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

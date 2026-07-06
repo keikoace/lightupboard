@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Hourly Minutes{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Hourly Minutes – Past 4 Weeks</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="side" class="form-select form-select-sm">
+          <option value="customer" {% if request.GET.side != 'supplier' %}selected{% endif %}>Customer</option>
+          <option value="supplier" {% if request.GET.side == 'supplier' %}selected{% endif %}>Supplier</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="company" class="form-select form-select-sm">
+          <option value="">All companies</option>
+          {% for c in companies %}
+          <option value="{{ c.pk }}" {% if selected_company == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <canvas id="hourlyChart" height="100"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const COLORS = ['#0d6efd','#fd7e14','#198754','#dc3545'];
+const labels   = {{ labels_json|safe }};
+const datasets = {{ datasets_json|safe }};
+
+new Chart(document.getElementById('hourlyChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: datasets.map((d, i) => ({
+      label: d.label,
+      data: d.data,
+      borderColor: COLORS[i % COLORS.length],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+      pointRadius: 2,
+    })),
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } } }
+  }
+});
+</script>
+{% endblock %}

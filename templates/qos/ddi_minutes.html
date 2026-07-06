@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}DDI Minutes{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">DDI Minutes</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="date" name="from" value="{{ request.GET.from }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <input type="date" name="to" value="{{ request.GET.to }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <select name="group" class="form-select form-select-sm">
+          <option value="number">By Number</option>
+          <option value="profile">By Profile</option>
+          <option value="customer">By Customer</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Run</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Number / Profile / Customer</th>
+          <th class="text-end">Calls</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">ASR %</th>
+          <th class="text-end">Revenue</th>
+          <th class="text-end">Cost</th>
+          <th class="text-end">GP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if has_run %}
+          {% for row in rows %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td class="text-end">{{ row.calls }}</td>
+            <td class="text-end">{{ row.minutes|floatformat:1 }}</td>
+            <td class="text-end">{{ row.asr|floatformat:1 }}%</td>
+            <td class="text-end">{{ row.revenue|floatformat:4 }}</td>
+            <td class="text-end">{{ row.cost|floatformat:4 }}</td>
+            <td class="text-end {% if row.gp < 0 %}text-danger{% endif %}">{{ row.gp|floatformat:4 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No DDI traffic found for the selected filters.</td></tr>
+          {% endfor %}
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">
+          Select a date range and click Run to view DDI minutes.
+        </td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

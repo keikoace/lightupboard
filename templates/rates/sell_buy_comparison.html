@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Sell to Buy Comparison{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Sell to Buy Comparison</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Customer Tariff</label>
+        <select name="sell" class="form-select form-select-sm">
+          <option value="">— sell tariff —</option>
+          {% for t in sell_tariffs %}
+          <option value="{{ t.pk }}" {% if sell_id == t.pk|stringformat:"s" %}selected{% endif %}>
+            {{ t.company.name }} — {{ t.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Supplier Tariff</label>
+        <select name="buy" class="form-select form-select-sm">
+          <option value="">— buy tariff —</option>
+          {% for t in buy_tariffs %}
+          <option value="{{ t.pk }}" {% if buy_id == t.pk|stringformat:"s" %}selected{% endif %}>
+            {{ t.company.name }} — {{ t.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Min. Margin %</label>
+        <input type="number" name="min_margin" value="{{ request.GET.min_margin|default:0 }}"
+               class="form-control form-control-sm" style="width:80px">
+      </div>
+      <div class="col-auto mt-3">
+        <button class="btn btn-sm btn-secondary" type="submit">Compare</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Prefix</th>
+          <th>Destination</th>
+          <th class="text-end">Sell Rate</th>
+          <th class="text-end">Buy Rate</th>
+          <th class="text-end">Margin</th>
+          <th class="text-end">Margin %</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><code>{{ row.prefix }}</code></td>
+          <td>{{ row.destination }}</td>
+          <td class="text-end">{{ row.sell_rate|floatformat:6 }}</td>
+          <td class="text-end">{{ row.buy_rate|floatformat:6 }}</td>
+          <td class="text-end {% if row.margin < 0 %}text-danger{% endif %}">{{ row.margin|floatformat:6 }}</td>
+          <td class="text-end {% if row.margin_pct < 0 %}text-danger{% elif row.margin_pct >= 20 %}text-success{% else %}text-warning{% endif %}">
+            {{ row.margin_pct }}%
+          </td>
+          <td>
+            {% if row.status == 'danger' %}<span class="badge bg-danger">Loss</span>
+            {% elif row.status == 'success' %}<span class="badge bg-success">Good</span>
+            {% else %}<span class="badge bg-warning text-dark">Low</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            {% if sell_id and buy_id %}
+              No matching prefixes found between the selected tariffs.
+            {% else %}
+              Select a sell and buy tariff above to run the comparison.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

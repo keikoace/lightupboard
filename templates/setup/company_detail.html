@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} – Company Detail{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'setup:company_list' %}">Companies</a></li>
+    <li class="breadcrumb-item active">{{ company.name }}</li>
+  </ol>
+</nav>
+
+<div class="row g-3">
+  <!-- Left: core details -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Company Details</span>
+        <div class="d-flex gap-2">
+          <a href="{% url 'setup:company_profile' company.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-person-lines-fill"></i> Full Profile
+          </a>
+          <a href="/admin/core/company/{{ company.pk }}/change/" class="btn btn-sm btn-outline-secondary">Edit</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5">Role</dt><dd class="col-7">{{ company.get_role_display }}</dd>
+          <dt class="col-5">Currency</dt><dd class="col-7">{{ company.currency }}</dd>
+          <dt class="col-5">Country</dt><dd class="col-7">{{ company.country|default:"—" }}</dd>
+          <dt class="col-5">Email</dt><dd class="col-7">{{ company.email|default:"—" }}</dd>
+          <dt class="col-5">Phone</dt><dd class="col-7">{{ company.phone|default:"—" }}</dd>
+          <dt class="col-5">Address</dt><dd class="col-7">{{ company.address|default:"—"|linebreaksbr }}</dd>
+          <dt class="col-5">Active</dt>
+          <dd class="col-7">
+            {% if company.is_active %}<span class="badge bg-success">Yes</span>
+            {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+          </dd>
+          <dt class="col-5">Account Mgr.</dt>
+          <dd class="col-7">
+            {% for am in company.account_managers.all %}
+              <span class="badge bg-secondary me-1">{{ am.get_full_name|default:am.username }}</span>
+            {% empty %}
+              <span class="text-muted">—</span>
+            {% endfor %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Financial Terms</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-6">Credit Limit</dt><dd class="col-6">{{ company.currency }} {{ company.credit_limit|floatformat:2 }}</dd>
+          <dt class="col-6">Payment Terms</dt><dd class="col-6">{{ company.payment_terms|default:"— None —" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: linked records -->
+  <div class="col-lg-7">
+    <!-- Tariffs -->
+    <div class="card mb-3">
+      <div class="card-header">Tariffs</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Name</th><th>Side</th><th>Effective</th><th>Active</th></tr></thead>
+          <tbody>
+            {% for t in company.tariffs.all %}
+            <tr>
+              <td>{{ t.name }}</td>
+              <td>{{ t.get_side_display }}</td>
+              <td>{{ t.effective_date }}</td>
+              <td>{% if t.is_active %}<span class="badge bg-success">Yes</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-2">No tariffs.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent invoices -->
+    <div class="card mb-3">
+      <div class="card-header">Recent Invoices</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Invoice #</th><th>Type</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for inv in company.invoices.all|slice:":5" %}
+            <tr>
+              <td>{{ inv.invoice_number }}</td>
+              <td>{{ inv.get_invoice_type_display }}</td>
+              <td class="text-end">{{ inv.total_amount|floatformat:2 }}</td>
+              <td><span class="badge bg-secondary">{{ inv.get_status_display }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-2">No invoices.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Billable Items / Cart -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cart3 me-1"></i> Billable Items</span>
+        <a href="{% url 'finance:customer_cart' company.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-arrow-right-circle"></i> Manage Cart
+        </a>
+      </div>
+      <div class="card-body py-2 px-3">
+        {% with count=company.billable_items.count %}
+        <span class="text-muted small">
+          {{ count }} item{{ count|pluralize }} total &mdash; click to add or manage recurring charges
+        </span>
+        {% endwith %}
+      </div>
+    </div>
+
+    <!-- Trunks -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-diagram-3 me-1"></i> Trunks</span>
+        <a href="{% url 'setup:trunk_add' company.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-plus-lg"></i> Add Trunk
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Prefix</th>
+              <th>Direction</th>
+              <th>Buy Tariff</th>
+              <th>Sell Tariff</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trunk in company.trunks.all %}
+            <tr>
+              <td>
+                {{ trunk.name }}
+                {% if trunk.abbreviation %}<small class="text-muted ms-1">({{ trunk.abbreviation }})</small>{% endif %}
+              </td>
+              <td><code class="small">{{ trunk.prefix|default:"—" }}</code></td>
+              <td>{{ trunk.get_direction_display }}</td>
+              <td>{{ trunk.buy_tariff.name|default:"—" }}</td>
+              <td>{{ trunk.sell_tariff.name|default:"—" }}</td>
+              <td>
+                {% if trunk.is_active %}<span class="badge bg-success">Yes</span>
+                {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'setup:trunk_edit' company.pk trunk.pk %}" class="btn btn-xs btn-outline-secondary me-1" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <a href="{% url 'setup:trunk_delete' company.pk trunk.pk %}" class="btn btn-xs btn-outline-danger" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted text-center py-2">No trunks — this company is billed as a single entity.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    {% if company.notes %}
+    <div class="card">
+      <div class="card-header">Notes</div>
+      <div class="card-body"><p class="mb-0">{{ company.notes|linebreaksbr }}</p></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

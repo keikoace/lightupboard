@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}DDI Routing Setup{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">DDI Routing Setup</h5>
+  <a href="{% url 'ddi:route_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Add Route
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Profile</th><th>Supplier</th><th>Priority</th><th>Weight</th><th>Active</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for route in routes %}
+        <tr>
+          <td>{{ route.profile.name }}</td>
+          <td>{{ route.supplier.name }}</td>
+          <td class="text-center">{{ route.priority }}</td>
+          <td class="text-center">{{ route.weight }}</td>
+          <td>
+            {% if route.is_active %}<span class="badge bg-success">Yes</span>
+            {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'ddi:route_edit' route.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'ddi:route_delete' route.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No routes configured. <a href="{% url 'ddi:route_add' %}">Add one.</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

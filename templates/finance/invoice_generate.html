@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Generate Invoice{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-receipt me-1"></i> Generate Invoice</h5>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{# ── Generation form ── #}
+{% if not preview %}
+<div class="card mb-4">
+  <div class="card-header">Invoice Parameters</div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="preview">
+      <div class="row g-3">
+
+        <div class="col-md-4">
+          <label class="form-label">Customer</label>
+          <select name="company" class="form-select" required>
+            <option value="">— Select customer —</option>
+            {% for c in customers %}
+            <option value="{{ c.pk }}" {% if request.POST.company == c.pk|stringformat:"s" %}selected{% endif %}>
+              {{ c.name }}{% if c.customer_number %} ({{ c.customer_number }}){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Billing Entity (sender)</label>
+          <select name="billing_profile" class="form-select" required>
+            <option value="">— Select billing profile —</option>
+            {% for p in profiles %}
+            <option value="{{ p.pk }}" {% if request.POST.billing_profile == p.pk|stringformat:"s" %}selected{% endif %}>
+              {{ p.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Year</label>
+          <select name="year" class="form-select">
+            {% for y in years %}
+            <option value="{{ y }}" {% if y == today.year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Month</label>
+          <select name="month" class="form-select">
+            {% for m in months %}
+            <option value="{{ m }}" {% if m == today.month|add:"-1" %}selected{% endif %}>
+              {{ m|stringformat:"02d" }}
+              {% if m == 1 %}Jan{% elif m == 2 %}Feb{% elif m == 3 %}Mar
+              {% elif m == 4 %}Apr{% elif m == 5 %}May{% elif m == 6 %}Jun
+              {% elif m == 7 %}Jul{% elif m == 8 %}Aug{% elif m == 9 %}Sep
+              {% elif m == 10 %}Oct{% elif m == 11 %}Nov{% elif m == 12 %}Dec{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <div class="d-flex gap-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="include_cdrs" value="1" id="incCDR" checked>
+              <label class="form-check-label" for="incCDR">Include CDR traffic (per destination)</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="include_billable_items" value="1" id="incBI" checked>
+              <label class="form-check-label" for="incBI">Include recurring billable items</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-eye me-1"></i> Preview Invoice
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% else %}
+{# ── Preview ── #}
+<div class="alert alert-info d-flex align-items-center gap-2">
+  <i class="bi bi-info-circle-fill"></i>
+  Preview for <strong>{{ preview.company.name }}</strong> &mdash;
+  {{ preview.period_start|date:"d M Y" }} to {{ preview.period_end|date:"d M Y" }}
+  via <strong>{{ preview.profile.name }}</strong>.
+  No invoice has been created yet.
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Invoice Lines Preview</span>
+    <span class="badge bg-secondary">{{ preview.lines|length }} line{{ preview.lines|length|pluralize }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if preview.lines %}
+    <table class="table table-sm mb-0 align-top">
+      <thead class="table-light">
+        <tr>
+          <th>Type</th>
+          <th>Title / Destination</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">Amount {{ preview.currency }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in preview.lines %}
+        <tr>
+          <td><span class="badge {% if line.type == 'CDR' %}bg-info{% else %}bg-secondary{% endif %}">{{ line.type }}</span></td>
+          <td>
+            <strong>{{ line.title }}</strong>
+            {% if line.title != line.detail %}<div class="text-muted small">{{ line.detail }}</div>{% endif %}
+          </td>
+          <td class="text-end">{% if line.minutes is not None %}{{ line.minutes|floatformat:3 }}{% else %}—{% endif %}</td>
+          <td class="text-end fw-bold">{{ line.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="table-light">
+          <td colspan="3" class="text-end">Subtotal</td>
+          <td class="text-end fw-bold">{{ preview.subtotal|floatformat:2 }}</td>
+        </tr>
+        <tr class="table-light">
+          <td colspan="3" class="text-end">VAT {{ preview.vat_rate }}%</td>
+          <td class="text-end">{{ preview.tax|floatformat:2 }}</td>
+        </tr>
+        <tr style="border-top:2px solid var(--accent)">
+          <td colspan="3" class="text-end fw-bold" style="color:var(--accent)">Total {{ preview.currency }}</td>
+          <td class="text-end fw-bold" style="color:var(--accent);font-size:1.05rem">{{ preview.total|floatformat:2 }}</td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-4">No billable data found for this period.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="d-flex gap-2">
+  {# Confirm — create the invoice #}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="confirm">
+    <input type="hidden" name="company" value="{{ preview.company.pk }}">
+    <input type="hidden" name="billing_profile" value="{{ preview.profile.pk }}">
+    <input type="hidden" name="year" value="{{ preview.year }}">
+    <input type="hidden" name="month" value="{{ preview.month }}">
+    <input type="hidden" name="include_cdrs" value="{% if preview.include_cdrs %}1{% endif %}">
+    <input type="hidden" name="include_billable_items" value="{% if preview.include_bi %}1{% endif %}">
+    <button type="submit" class="btn btn-success" {% if not preview.lines %}disabled{% endif %}>
+      <i class="bi bi-check-circle me-1"></i> Create Invoice
+    </button>
+  </form>
+
+  {# Back — go back to form #}
+  <a href="{% url 'finance:invoice_generate' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "portal/base.html" %}
+{% block title %}Sign In — Lightup Customer Portal{% endblock %}
+
+{% block nav %}{# no nav on login page #}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:80vh">
+  <div style="width:100%;max-width:420px">
+
+    <!-- Logo / brand -->
+    <div class="text-center mb-4">
+      <div style="font-size:2rem;font-weight:800;color:#1a4f8a;letter-spacing:-.02em">
+        Lightup <span style="color:#2563ab">Network Solutions</span>
+      </div>
+      <div class="text-muted mt-1" style="font-size:.9rem">Customer Portal</div>
+    </div>
+
+    <div class="card">
+      <div class="card-body p-4">
+        <h5 class="mb-4 fw-semibold">Sign in to your account</h5>
+
+        {% if form.errors %}
+        <div class="alert alert-danger py-2">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          Invalid username or password.
+        </div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Username</label>
+            <input type="text" name="username" class="form-control" autofocus autocomplete="username"
+                   value="{{ form.username.value|default:'' }}">
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold small">Password</label>
+            <input type="password" name="password" class="form-control" autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn w-100 fw-semibold"
+                  style="background:var(--lns-blue);color:#fff;padding:.6rem">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <p class="text-center text-muted mt-3" style="font-size:.82rem">
+      Need access? Contact your account manager at
+      <a href="mailto:info@lightupnet.de" class="text-muted">info@lightupnet.de</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

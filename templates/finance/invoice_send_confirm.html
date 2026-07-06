@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Send Invoice {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-envelope me-1"></i> Send Invoice {{ invoice.invoice_number }}</h5>
+  <a href="{% url 'finance:invoice_detail' invoice.pk %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-header py-2 fw-semibold">Invoice Summary</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">Customer</dt><dd class="col-7">{{ invoice.company.name }}</dd>
+          <dt class="col-5">Invoice #</dt><dd class="col-7">{{ invoice.invoice_number }}</dd>
+          <dt class="col-5">Period</dt><dd class="col-7">{{ invoice.period_start }} – {{ invoice.period_end }}</dd>
+          <dt class="col-5">Amount Due</dt>
+          <dd class="col-7 fw-semibold">{{ invoice.currency }} {{ invoice.balance_due|floatformat:2 }}</dd>
+          <dt class="col-5">Current Status</dt>
+          <dd class="col-7">
+            <span class="badge {% if invoice.status == 'draft' %}bg-secondary{% elif invoice.status == 'sent' %}bg-primary{% else %}bg-success{% endif %}">
+              {{ invoice.get_status_display }}
+            </span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header py-2 fw-semibold">Send Details</div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label">To <span class="text-danger">*</span></label>
+            <input type="email" name="to_email" value="{{ to_email }}" class="form-control" required placeholder="customer@example.com">
+          </div>
+          <div class="col-12">
+            <label class="form-label">CC <span class="text-muted small">(optional)</span></label>
+            <input type="email" name="cc_email" class="form-control" placeholder="finance@example.com">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Additional Note <span class="text-muted small">(optional)</span></label>
+            <textarea name="note" class="form-control" rows="3" placeholder="Any message to include in the email body…"></textarea>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-send me-1"></i> Send Invoice
+            </button>
+            <a href="{% url 'finance:invoice_detail' invoice.pk %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

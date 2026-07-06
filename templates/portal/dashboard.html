@@ -1,0 +1,102 @@
+{% extends "portal/base.html" %}
+{% block title %}Dashboard — {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-0 fw-bold" style="color:#1a4f8a">Welcome back</h4>
+    <div class="text-muted small">{{ company.name }} &mdash; {{ today|date:"l, F j, Y" }}</div>
+  </div>
+</div>
+
+<!-- KPI row -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-label">Outstanding Balance</div>
+      <div class="kpi-value {% if balance_due > 0 %}text-danger{% endif %}">
+        {{ balance_due|floatformat:2 }} {{ company.currency }}
+      </div>
+      <div class="kpi-sub">
+        {% if overdue_count %}
+          <span class="text-danger">{{ overdue_count }} overdue invoice{{ overdue_count|pluralize }}</span>
+        {% else %}
+          All invoices up to date
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-label">Traffic This Month</div>
+      <div class="kpi-value">{{ minutes_this_month|floatformat:0 }}</div>
+      <div class="kpi-sub">minutes &bull; {{ calls_this_month }} calls</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-label">DID Numbers</div>
+      <div class="kpi-value">{{ did_count }}</div>
+      <div class="kpi-sub">assigned to your account</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-label">Currency</div>
+      <div class="kpi-value">{{ company.currency }}</div>
+      <div class="kpi-sub">billing currency</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent invoices -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center py-2">
+    <span><i class="bi bi-receipt me-1"></i> Recent Invoices</span>
+    <a href="{% url 'portal:invoices' %}" class="btn btn-sm btn-outline-primary">View all</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Period</th>
+          <th>Issue Date</th>
+          <th>Due Date</th>
+          <th class="text-end">Amount</th>
+          <th class="text-end">Balance Due</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in recent_invoices %}
+        <tr>
+          <td class="fw-semibold">{{ inv.invoice_number }}</td>
+          <td class="text-muted small">{{ inv.period_start|date:"M Y" }}</td>
+          <td>{{ inv.issue_date|date:"d M Y" }}</td>
+          <td>{{ inv.due_date|date:"d M Y" }}</td>
+          <td class="text-end">{{ inv.total_amount|floatformat:2 }} {{ inv.currency }}</td>
+          <td class="text-end fw-semibold {% if inv.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+            {{ inv.balance_due|floatformat:2 }}
+          </td>
+          <td>
+            <span class="badge badge-{{ inv.status }}">{{ inv.get_status_display }}</span>
+          </td>
+          <td>
+            <a href="{% url 'portal:invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-secondary py-0">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{% url 'portal:invoice_print' inv.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary py-0">
+              <i class="bi bi-printer"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No invoices yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

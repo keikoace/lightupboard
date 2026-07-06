@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Rate Audit Trail{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-clock-history me-1"></i> Rate Audit Trail</h5>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="type" class="form-select form-select-sm">
+          <option value="">All types</option>
+          <option value="Rate" {% if obj_type == 'Rate' %}selected{% endif %}>Rate</option>
+          <option value="Tariff" {% if obj_type == 'Tariff' %}selected{% endif %}>Tariff</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="action" class="form-select form-select-sm">
+          <option value="">All actions</option>
+          <option value="create" {% if action == 'create' %}selected{% endif %}>Created</option>
+          <option value="update" {% if action == 'update' %}selected{% endif %}>Updated</option>
+          <option value="delete" {% if action == 'delete' %}selected{% endif %}>Deleted</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Timestamp</th><th>Action</th><th>Type</th><th>Object</th><th>User</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in page_obj %}
+        <tr>
+          <td class="small text-muted">{{ entry.timestamp|date:"Y-m-d H:i:s" }}</td>
+          <td>
+            {% if entry.action == 'create' %}<span class="badge bg-success">Created</span>
+            {% elif entry.action == 'update' %}<span class="badge bg-primary">Updated</span>
+            {% else %}<span class="badge bg-danger">Deleted</span>{% endif %}
+          </td>
+          <td><span class="badge bg-secondary">{{ entry.object_type }}</span></td>
+          <td class="small">{{ entry.object_repr|truncatechars:60 }}</td>
+          <td class="small text-muted">{{ entry.user|default:"system" }}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary"
+              data-bs-toggle="collapse" data-bs-target="#diff-{{ entry.pk }}">
+              <i class="bi bi-code-slash"></i>
+            </button>
+          </td>
+        </tr>
+        <tr class="collapse" id="diff-{{ entry.pk }}">
+          <td colspan="6" class="bg-dark p-2">
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="text-muted small mb-1">Before</div>
+                <pre class="text-success small mb-0" style="max-height:160px;overflow:auto">{{ entry.before_json }}</pre>
+              </div>
+              <div class="col-6">
+                <div class="text-muted small mb-1">After</div>
+                <pre class="text-info small mb-0" style="max-height:160px;overflow:auto">{{ entry.after_json }}</pre>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No audit entries yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&type={{ obj_type }}&action={{ action }}">‹</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&type={{ obj_type }}&action={{ action }}">›</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

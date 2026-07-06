@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Bill Verification{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Bill Verification</h5>
+  <a href="{% url 'finance:bill_verification_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> New Verification
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Supplier</th><th>Period</th>
+          <th class="text-end">Supplier Amount</th>
+          <th class="text-end">Our CDR Cost</th>
+          <th class="text-end">Variance</th>
+          <th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in bv_list %}
+        {% with v=item.obj %}
+        <tr class="{% if item.variance_live > 0.5 or item.variance_live < -0.5 %}table-warning{% endif %}">
+          <td>{{ v.supplier.name }}</td>
+          <td class="small text-muted">{{ v.period_start }} – {{ v.period_end }}</td>
+          <td class="text-end">{{ v.supplier_amount|floatformat:2 }}</td>
+          <td class="text-end">
+            {{ item.cdr_cost|floatformat:2 }}
+            <span class="text-muted small ms-1">(live)</span>
+          </td>
+          <td class="text-end fw-semibold {% if item.variance_live > 0.01 %}text-danger{% elif item.variance_live < -0.01 %}text-success{% else %}text-muted{% endif %}">
+            {% if item.variance_live > 0 %}+{% endif %}{{ item.variance_live|floatformat:2 }}
+          </td>
+          <td>
+            {% if v.status == 'ok' %}<span class="badge bg-success">Agreed</span>
+            {% elif v.status == 'dispute' %}<span class="badge bg-danger">Disputed</span>
+            {% else %}<span class="badge bg-secondary">Pending</span>{% endif %}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <form method="post" action="{% url 'finance:bill_verification_recalculate' v.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-info" title="Recalculate from CDRs">
+                <i class="bi bi-arrow-repeat"></i>
+              </button>
+            </form>
+            <a href="{% url 'finance:bill_verification_edit' v.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'finance:bill_verification_delete' v.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">
+          No verifications yet. <a href="{% url 'finance:bill_verification_add' %}">Add one</a>.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="text-muted small mt-2">
+  <i class="bi bi-info-circle"></i>
+  <strong>Our CDR Cost</strong> is calculated live from processed CDRs for the period.
+  Click <i class="bi bi-arrow-repeat"></i> to save the live figure as the official <em>our_amount</em>
+  and auto-set the status to Agreed or Disputed.
+  A positive variance means the supplier billed more than our records show.
+</p>
+{% endblock %}

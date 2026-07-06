@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} – Profile{% endblock %}
+
+{% block content %}
+{# ── Header ── #}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1">
+        <li class="breadcrumb-item"><a href="{% url 'setup:company_list' %}">Companies</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'setup:company_detail' company.pk %}">{{ company.name }}</a></li>
+        <li class="breadcrumb-item active">Profile</li>
+      </ol>
+    </nav>
+    <h4 class="mb-0 d-flex align-items-center gap-2">
+      {{ company.name }}
+      {% if company.role == 'customer' %}
+        <span class="badge bg-info" style="font-size:.7rem">Customer</span>
+      {% elif company.role == 'supplier' %}
+        <span class="badge bg-warning text-dark" style="font-size:.7rem">Supplier</span>
+      {% else %}
+        <span class="badge bg-purple" style="background:rgba(157,92,255,0.2)!important;color:#9d5cff!important;border:1px solid rgba(157,92,255,0.4);font-size:.7rem">Customer &amp; Supplier</span>
+      {% endif %}
+      {% if not company.is_active %}
+        <span class="badge bg-secondary" style="font-size:.7rem">Inactive</span>
+      {% endif %}
+    </h4>
+    <small class="text-muted">{{ company.currency }}{% if company.country %} &middot; {{ company.country }}{% endif %}{% if company.payment_terms %} &middot; Terms {{ company.payment_terms }}{% endif %}</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'finance:customer_cart' company.pk %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-cart3"></i> Cart
+    </a>
+    <a href="{% url 'setup:company_edit' company.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil"></i> Edit
+    </a>
+  </div>
+</div>
+
+{# ── KPI stat cards ── #}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="card text-center py-2">
+      <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">{{ customer_stats.calls }}</div>
+      <div class="text-muted" style="font-size:.75rem">Calls sent (30d)</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card text-center py-2">
+      <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">{{ customer_stats.minutes|floatformat:0 }}</div>
+      <div class="text-muted" style="font-size:.75rem">Minutes as customer (30d)</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card text-center py-2">
+      <div style="font-size:1.5rem;font-weight:700;color:#22c55e">{{ supplier_stats.calls }}</div>
+      <div class="text-muted" style="font-size:.75rem">Calls carried (30d)</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card text-center py-2">
+      <div style="font-size:1.5rem;font-weight:700;color:#22c55e">{{ supplier_stats.minutes|floatformat:0 }}</div>
+      <div class="text-muted" style="font-size:.75rem">Minutes as supplier (30d)</div>
+    </div>
+  </div>
+</div>
+
+{# ── Tabs ── #}
+<ul class="nav nav-tabs mb-3" id="profileTabs" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button">
+      <i class="bi bi-speedometer2 me-1"></i>Overview
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-customer" type="button">
+      <i class="bi bi-telephone-outbound me-1"></i>As Customer
+      {% if customer_stats.calls %}<span class="badge bg-info ms-1" style="font-size:.65rem">{{ customer_stats.calls }}</span>{% endif %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-supplier" type="button">
+      <i class="bi bi-telephone-inbound me-1"></i>As Supplier
+      {% if supplier_stats.calls %}<span class="badge bg-success ms-1" style="font-size:.65rem">{{ supplier_stats.calls }}</span>{% endif %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dids" type="button">
+      <i class="bi bi-hash me-1"></i>DIDs
+      {% with total=dids_assigned.count %}{% if total %}<span class="badge bg-secondary ms-1" style="font-size:.65rem">{{ total }}</span>{% endif %}{% endwith %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-finance" type="button">
+      <i class="bi bi-receipt me-1"></i>Financials
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  {# ═══════════════════════════ OVERVIEW TAB ═══════════════════════════ #}
+  <div class="tab-pane fade show active" id="tab-overview">
+    <div class="row g-3">
+
+      {# Left: Company details #}
+      <div class="col-lg-4">
+        <div class="card mb-3">
+          <div class="card-header"><i class="bi bi-building me-1"></i> Company Info</div>
+          <div class="card-body">
+            <dl class="row mb-0 small">
+              <dt class="col-5">Role</dt><dd class="col-7">{{ company.get_role_display }}</dd>
+              <dt class="col-5">Currency</dt><dd class="col-7">{{ company.currency }}</dd>
+              <dt class="col-5">Country</dt><dd class="col-7">{{ company.country|default:"—" }}</dd>
+              <dt class="col-5">Email</dt><dd class="col-7">{{ company.email|default:"—" }}</dd>
+              <dt class="col-5">Phone</dt><dd class="col-7">{{ company.phone|default:"—" }}</dd>
+              <dt class="col-5">Credit Limit</dt><dd class="col-7">{{ company.currency }} {{ company.credit_limit|floatformat:2 }}</dd>
+              <dt class="col-5">Terms</dt><dd class="col-7">{{ company.payment_terms|default:"— None —" }}</dd>
+              <dt class="col-5">Account Mgr.</dt>
+              <dd class="col-7">
+                {% for am in company.account_managers.all %}
+                  <span class="badge bg-secondary me-1">{{ am.get_full_name|default:am.username }}</span>
+                {% empty %}<span class="text-muted">—</span>{% endfor %}
+              </dd>
+              <dt class="col-5">Active</dt>
+              <dd class="col-7">
+                {% if company.is_active %}<span class="badge bg-success">Yes</span>
+                {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+              </dd>
+            </dl>
+          </div>
+        </div>
+
+        {% if term_deals %}
+        <div class="card">
+          <div class="card-header"><i class="bi bi-file-earmark-text me-1"></i> Active Term Deals</div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+              <thead class="table-light"><tr><th>Destination</th><th class="text-end">Minutes</th><th class="text-end">Rate</th></tr></thead>
+              <tbody>
+                {% for td in term_deals %}
+                <tr>
+                  <td>{{ td.destination_name }}</td>
+                  <td class="text-end">{{ td.committed_minutes|floatformat:0 }}</td>
+                  <td class="text-end">{{ td.rate }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Right: Traffic summary #}
+      <div class="col-lg-8">
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <div class="card h-100" style="border-color:rgba(34,193,255,0.3)">
+              <div class="card-header" style="color:var(--accent)"><i class="bi bi-telephone-outbound me-1"></i> Customer Traffic (30d)</div>
+              <div class="card-body">
+                <dl class="row mb-0 small">
+                  <dt class="col-6">Total Calls</dt><dd class="col-6 fw-bold">{{ customer_stats.calls }}</dd>
+                  <dt class="col-6">Total Minutes</dt><dd class="col-6 fw-bold">{{ customer_stats.minutes|floatformat:1 }}</dd>
+                  <dt class="col-6">Revenue</dt><dd class="col-6 fw-bold">{{ company.currency }} {{ customer_stats.revenue|floatformat:2 }}</dd>
+                  <dt class="col-6">Avg Sell Rate</dt><dd class="col-6">{{ customer_stats.avg_rate|floatformat:6 }}</dd>
+                  <dt class="col-6">Active Sell Tariffs</dt><dd class="col-6">{{ sell_tariffs.count }}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card h-100" style="border-color:rgba(34,197,94,0.3)">
+              <div class="card-header" style="color:#22c55e"><i class="bi bi-telephone-inbound me-1"></i> Supplier Traffic (30d)</div>
+              <div class="card-body">
+                <dl class="row mb-0 small">
+                  <dt class="col-6">Total Calls</dt><dd class="col-6 fw-bold">{{ supplier_stats.calls }}</dd>
+                  <dt class="col-6">Total Minutes</dt><dd class="col-6 fw-bold">{{ supplier_stats.minutes|floatformat:1 }}</dd>
+                  <dt class="col-6">Cost</dt><dd class="col-6 fw-bold">{{ company.currency }} {{ supplier_stats.cost|floatformat:2 }}</dd>
+                  <dt class="col-6">Avg Buy Rate</dt><dd class="col-6">{{ supplier_stats.avg_rate|floatformat:6 }}</dd>
+                  <dt class="col-6">Active Buy Tariffs</dt><dd class="col-6">{{ buy_tariffs.count }}</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Top destinations combined #}
+        {% if top_dest_customer or top_dest_supplier %}
+        <div class="card">
+          <div class="card-header"><i class="bi bi-geo-alt me-1"></i> Top Destinations (30d)</div>
+          <div class="card-body p-0">
+            <div class="row g-0">
+              {% if top_dest_customer %}
+              <div class="{% if top_dest_supplier %}col-md-6 border-end{% else %}col-12{% endif %}">
+                <div class="px-3 pt-2 pb-1 text-muted small fw-bold" style="color:var(--accent)!important">
+                  <i class="bi bi-telephone-outbound me-1"></i>Sending traffic to
+                </div>
+                <table class="table table-sm mb-0">
+                  <thead class="table-light"><tr><th>Destination</th><th class="text-end">Minutes</th><th class="text-end">Revenue</th></tr></thead>
+                  <tbody>
+                    {% for d in top_dest_customer|slice:":8" %}
+                    <tr>
+                      <td>
+                        <span class="text-muted me-1" style="font-size:.75rem">{{ d.destination__prefix }}</span>
+                        {{ d.destination__name }}
+                      </td>
+                      <td class="text-end">{{ d.minutes|floatformat:1 }}</td>
+                      <td class="text-end">{{ d.revenue|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+              {% if top_dest_supplier %}
+              <div class="{% if top_dest_customer %}col-md-6{% else %}col-12{% endif %}">
+                <div class="px-3 pt-2 pb-1 fw-bold small" style="color:#22c55e!important">
+                  <i class="bi bi-telephone-inbound me-1"></i>Carrying traffic to
+                </div>
+                <table class="table table-sm mb-0">
+                  <thead class="table-light"><tr><th>Destination</th><th class="text-end">Minutes</th><th class="text-end">Cost</th></tr></thead>
+                  <tbody>
+                    {% for d in top_dest_supplier|slice:":8" %}
+                    <tr>
+                      <td>
+                        <span class="text-muted me-1" style="font-size:.75rem">{{ d.destination__prefix }}</span>
+                        {{ d.destination__name }}
+                      </td>
+                      <td class="text-end">{{ d.minutes|floatformat:1 }}</td>
+                      <td class="text-end">{{ d.cost|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════════════════ CUSTOMER TAB ═══════════════════════════ #}
+  <div class="tab-pane fade" id="tab-customer">
+
+    {# Sell tariffs (routes the customer uses from us) #}
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-text me-1"></i> Sell Tariffs — Routes available to this customer</span>
+        <span class="badge bg-secondary">{{ sell_tariffs.count }}</span>
+      </div>
+      <div class="card-body p-0">
+        {% if sell_tariffs %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Tariff Name</th><th>Currency</th><th>Effective</th><th>Expires</th><th class="text-end">Rates</th></tr>
+          </thead>
+          <tbody>
+            {% for t in sell_tariffs %}
+            <tr>
+              <td class="fw-bold">{{ t.name }}</td>
+              <td>{{ t.currency }}</td>
+              <td>{{ t.effective_date }}</td>
+              <td>{{ t.expiry_date|default:"—" }}</td>
+              <td class="text-end"><span class="badge bg-secondary">{{ t.rates.count }}</span></td>
+            </tr>
+            {# Sample of rates for this tariff (first 5) #}
+            {% for r in t.rates.all|slice:":5" %}
+            <tr style="background:rgba(255,255,255,0.02)">
+              <td class="ps-4 text-muted small">
+                <span class="me-2">{{ r.prefix }}</span>
+                <span>{{ r.destination.name|default:"" }}</span>
+              </td>
+              <td class="small text-muted">{{ t.currency }}</td>
+              <td class="small">{{ r.effective_date }}</td>
+              <td></td>
+              <td class="text-end small fw-bold">{{ r.rate_per_minute }}</td>
+            </tr>
+            {% endfor %}
+            {% if t.rates.count > 5 %}
+            <tr style="background:rgba(255,255,255,0.02)">
+              <td colspan="5" class="ps-4 text-muted small">… and {{ t.rates.count|add:"-5" }} more rates</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">No active sell tariffs for this company.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Top destinations as customer #}
+    {% if top_dest_customer %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-bar-chart me-1"></i> Top Destinations — Sent (last 30 days)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Destination</th><th>Prefix</th><th class="text-end">Calls</th><th class="text-end">Minutes</th><th class="text-end">Revenue</th></tr>
+          </thead>
+          <tbody>
+            {% for d in top_dest_customer %}
+            <tr>
+              <td>{{ d.destination__name }}</td>
+              <td class="text-muted">{{ d.destination__prefix }}</td>
+              <td class="text-end">{{ d.calls }}</td>
+              <td class="text-end fw-bold">{{ d.minutes|floatformat:1 }}</td>
+              <td class="text-end">{{ d.revenue|floatformat:4 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Recent CDRs as customer #}
+    {% if recent_cdr_customer %}
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history me-1"></i> Recent Calls — Sent</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:.82rem">
+          <thead class="table-light">
+            <tr><th>Start Time</th><th>DNIS</th><th>Destination</th><th>Supplier</th><th class="text-end">Dur (s)</th><th class="text-end">Sell Rate</th><th class="text-end">Revenue</th></tr>
+          </thead>
+          <tbody>
+            {% for c in recent_cdr_customer %}
+            <tr>
+              <td style="white-space:nowrap">{{ c.start_time|date:"d M H:i" }}</td>
+              <td class="font-monospace">{{ c.dnis }}</td>
+              <td>{{ c.destination.name|default:"—" }}</td>
+              <td>{{ c.supplier.name|default:"—" }}</td>
+              <td class="text-end">{{ c.sell_billed_duration_sec }}</td>
+              <td class="text-end">{{ c.sell_rate }}</td>
+              <td class="text-end fw-bold">{{ c.sell_revenue|floatformat:4 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not sell_tariffs and not top_dest_customer %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-telephone-x" style="font-size:2rem;opacity:.3"></i>
+      <p class="mt-2">No customer traffic or sell tariffs found for this company.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ═══════════════════════════ SUPPLIER TAB ═══════════════════════════ #}
+  <div class="tab-pane fade" id="tab-supplier">
+
+    {# Buy tariffs (routes they provide to us) #}
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-text me-1"></i> Buy Tariffs — Routes this supplier provides</span>
+        <span class="badge bg-secondary">{{ buy_tariffs.count }}</span>
+      </div>
+      <div class="card-body p-0">
+        {% if buy_tariffs %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Tariff Name</th><th>Currency</th><th>Effective</th><th>Expires</th><th class="text-end">Rates</th></tr>
+          </thead>
+          <tbody>
+            {% for t in buy_tariffs %}
+            <tr>
+              <td class="fw-bold">{{ t.name }}</td>
+              <td>{{ t.currency }}</td>
+              <td>{{ t.effective_date }}</td>
+              <td>{{ t.expiry_date|default:"—" }}</td>
+              <td class="text-end"><span class="badge bg-secondary">{{ t.rates.count }}</span></td>
+            </tr>
+            {% for r in t.rates.all|slice:":5" %}
+            <tr style="background:rgba(255,255,255,0.02)">
+              <td class="ps-4 text-muted small">
+                <span class="me-2">{{ r.prefix }}</span>
+                <span>{{ r.destination.name|default:"" }}</span>
+              </td>
+              <td class="small text-muted">{{ t.currency }}</td>
+              <td class="small">{{ r.effective_date }}</td>
+              <td></td>
+              <td class="text-end small fw-bold">{{ r.rate_per_minute }}</td>
+            </tr>
+            {% endfor %}
+            {% if t.rates.count > 5 %}
+            <tr style="background:rgba(255,255,255,0.02)">
+              <td colspan="5" class="ps-4 text-muted small">… and {{ t.rates.count|add:"-5" }} more rates</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">No active buy tariffs for this company.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Top destinations as supplier #}
+    {% if top_dest_supplier %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-bar-chart me-1"></i> Top Destinations — Carried (last 30 days)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Destination</th><th>Prefix</th><th class="text-end">Calls</th><th class="text-end">Minutes</th><th class="text-end">Cost</th></tr>
+          </thead>
+          <tbody>
+            {% for d in top_dest_supplier %}
+            <tr>
+              <td>{{ d.destination__name }}</td>
+              <td class="text-muted">{{ d.destination__prefix }}</td>
+              <td class="text-end">{{ d.calls }}</td>
+              <td class="text-end fw-bold">{{ d.minutes|floatformat:1 }}</td>
+              <td class="text-end">{{ d.cost|floatformat:4 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# Recent CDRs as supplier #}
+    {% if recent_cdr_supplier %}
+    <div class="card">
+      <div class="card-header"><i class="bi bi-clock-history me-1"></i> Recent Calls — Carried</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:.82rem">
+          <thead class="table-light">
+            <tr><th>Start Time</th><th>DNIS</th><th>Destination</th><th>Customer</th><th class="text-end">Dur (s)</th><th class="text-end">Buy Rate</th><th class="text-end">Cost</th></tr>
+          </thead>
+          <tbody>
+            {% for c in recent_cdr_supplier %}
+            <tr>
+              <td style="white-space:nowrap">{{ c.start_time|date:"d M H:i" }}</td>
+              <td class="font-monospace">{{ c.dnis }}</td>
+              <td>{{ c.destination.name|default:"—" }}</td>
+              <td>{{ c.customer.name|default:"—" }}</td>
+              <td class="text-end">{{ c.sell_billed_duration_sec }}</td>
+              <td class="text-end">{{ c.buy_rate }}</td>
+              <td class="text-end fw-bold">{{ c.buy_cost|floatformat:4 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not buy_tariffs and not top_dest_supplier %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-telephone-x" style="font-size:2rem;opacity:.3"></i>
+      <p class="mt-2">No supplier traffic or buy tariffs found for this company.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ═══════════════════════════ DIDs TAB ═══════════════════════════ #}
+  <div class="tab-pane fade" id="tab-dids">
+
+    {# DIDs assigned to this customer #}
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hash me-1"></i> DIDs Assigned to This Customer</span>
+        <span class="badge bg-secondary">{{ dids_assigned.count }}</span>
+      </div>
+      <div class="card-body p-0">
+        {% if dids_assigned %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Number</th><th>Country</th><th>Destination</th><th>Vendor</th><th class="text-end">Buy Rate</th><th class="text-end">Sell Rate</th><th>Active</th></tr>
+          </thead>
+          <tbody>
+            {% for d in dids_assigned %}
+            <tr>
+              <td class="font-monospace fw-bold">{{ d.number }}</td>
+              <td>{{ d.country }}</td>
+              <td>{{ d.destination.name|default:"—" }}</td>
+              <td>{{ d.vendor.name|default:"—" }}</td>
+              <td class="text-end">{{ d.buy_rate }}</td>
+              <td class="text-end">{{ d.sell_rate }}</td>
+              <td>
+                {% if d.is_active %}<span class="badge bg-success">Yes</span>
+                {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">No DIDs assigned to this company.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# DIDs provided by this company as a vendor #}
+    {% if dids_provided %}
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-diagram-3 me-1"></i> DIDs Sourced From This Vendor</span>
+        <span class="badge bg-secondary">{{ dids_provided.count }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Number</th><th>Country</th><th>Destination</th><th>Assigned To</th><th class="text-end">Buy Rate</th><th>Active</th></tr>
+          </thead>
+          <tbody>
+            {% for d in dids_provided %}
+            <tr>
+              <td class="font-monospace fw-bold">{{ d.number }}</td>
+              <td>{{ d.country }}</td>
+              <td>{{ d.destination.name|default:"—" }}</td>
+              <td>{{ d.customer.name|default:"<span class='text-muted'>Unassigned</span>" }}</td>
+              <td class="text-end">{{ d.buy_rate }}</td>
+              <td>
+                {% if d.is_active %}<span class="badge bg-success">Yes</span>
+                {% else %}<span class="badge bg-secondary">No</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not dids_assigned and not dids_provided %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-hash" style="font-size:2rem;opacity:.3"></i>
+      <p class="mt-2">No DID numbers associated with this company.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ═══════════════════════════ FINANCIALS TAB ═══════════════════════════ #}
+  <div class="tab-pane fade" id="tab-finance">
+
+    {# Billable items #}
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cart3 me-1"></i> Recurring &amp; Billable Items</span>
+        <a href="{% url 'finance:customer_cart' company.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil"></i> Manage
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if billable_items %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Description</th><th>Billing</th><th class="text-end">Unit Price</th><th class="text-end">Qty</th><th class="text-end">Total</th><th>Currency</th><th>Next Invoice</th></tr>
+          </thead>
+          <tbody>
+            {% for item in billable_items %}
+            <tr>
+              <td>{{ item.description }}</td>
+              <td>
+                {% if item.billing_type == 'one_time' %}<span class="badge bg-secondary">One-time</span>
+                {% elif item.billing_type == 'monthly' %}<span class="badge bg-info">Monthly</span>
+                {% elif item.billing_type == 'quarterly' %}<span class="badge bg-info">Quarterly</span>
+                {% elif item.billing_type == 'half_yearly' %}<span class="badge bg-info">Half-yearly</span>
+                {% elif item.billing_type == 'yearly' %}
+                  <span class="badge" style="background:rgba(157,92,255,0.18)!important;color:#9d5cff!important;border:1px solid rgba(157,92,255,0.3)">Yearly</span>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ item.unit_price }}</td>
+              <td class="text-end">{{ item.quantity }}</td>
+              <td class="text-end fw-bold">{{ item.total }}</td>
+              <td>{{ item.currency }}</td>
+              <td>{% if item.is_recurring %}{{ item.next_billing_date|default:"—" }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-3">No active billable items. <a href="{% url 'finance:customer_cart' company.pk %}">Add items →</a></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Recent invoices #}
+    <div class="card">
+      <div class="card-header"><i class="bi bi-receipt me-1"></i> Recent Invoices</div>
+      <div class="card-body p-0">
+        {% if recent_invoices %}
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Invoice #</th><th>Type</th><th>Issue Date</th><th>Due</th><th class="text-end">Total</th><th class="text-end">Balance Due</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for inv in recent_invoices %}
+            <tr>
+              <td class="fw-bold font-monospace">{{ inv.invoice_number }}</td>
+              <td>{{ inv.get_invoice_type_display }}</td>
+              <td>{{ inv.issue_date }}</td>
+              <td>{{ inv.due_date }}</td>
+              <td class="text-end">{{ inv.currency }} {{ inv.total_amount|floatformat:2 }}</td>
+              <td class="text-end {% if inv.balance_due > 0 %}text-danger{% endif %}">
+                {{ inv.currency }} {{ inv.balance_due|floatformat:2 }}
+              </td>
+              <td>
+                {% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>
+                {% elif inv.status == 'overdue' %}<span class="badge bg-danger">Overdue</span>
+                {% elif inv.status == 'sent' %}<span class="badge bg-info">Sent</span>
+                {% elif inv.status == 'draft' %}<span class="badge bg-secondary">Draft</span>
+                {% else %}<span class="badge bg-secondary">{{ inv.get_status_display }}</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">No invoices for this company.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

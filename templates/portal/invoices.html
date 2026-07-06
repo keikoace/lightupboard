@@ -1,0 +1,68 @@
+{% extends "portal/base.html" %}
+{% block title %}Invoices — {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 fw-bold" style="color:#1a4f8a"><i class="bi bi-receipt me-2"></i>Invoices</h4>
+  <!-- Status filter -->
+  <div class="d-flex gap-2">
+    <a href="{% url 'portal:invoices' %}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+    {% for val, label in status_choices %}
+    <a href="?status={{ val }}" class="btn btn-sm {% if status_filter == val %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Period</th>
+          <th>Issue Date</th>
+          <th>Due Date</th>
+          <th class="text-end">Subtotal</th>
+          <th class="text-end">VAT</th>
+          <th class="text-end">Total</th>
+          <th class="text-end">Balance Due</th>
+          <th>Status</th>
+          <th class="text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td class="fw-semibold">{{ inv.invoice_number }}</td>
+          <td class="text-muted small">{{ inv.period_start|date:"M Y" }}</td>
+          <td>{{ inv.issue_date|date:"d M Y" }}</td>
+          <td class="{% if inv.status == 'overdue' %}text-danger fw-semibold{% endif %}">
+            {{ inv.due_date|date:"d M Y" }}
+          </td>
+          <td class="text-end">{{ inv.subtotal|floatformat:2 }}</td>
+          <td class="text-end text-muted">{{ inv.tax_amount|floatformat:2 }}</td>
+          <td class="text-end fw-semibold">{{ inv.total_amount|floatformat:2 }} {{ inv.currency }}</td>
+          <td class="text-end fw-semibold {% if inv.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+            {{ inv.balance_due|floatformat:2 }}
+          </td>
+          <td><span class="badge badge-{{ inv.status }}">{{ inv.get_status_display }}</span></td>
+          <td class="text-center">
+            <a href="{% url 'portal:invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-secondary py-0" title="View">
+              <i class="bi bi-eye"></i>
+            </a>
+            <a href="{% url 'portal:invoice_print' inv.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" title="Print / Download">
+              <i class="bi bi-printer"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" class="text-center text-muted py-5">
+          <i class="bi bi-receipt" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+          No invoices found.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

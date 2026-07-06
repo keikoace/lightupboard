@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Minutes Analysis{% endblock %}
+
+{% block content %}
+<h5 class="mb-3"><i class="bi bi-bar-chart-line me-1"></i> Minutes Analysis</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">From</label>
+        <input type="date" name="from" value="{{ request.GET.from }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">To</label>
+        <input type="date" name="to" value="{{ request.GET.to }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Customer</label>
+        <select name="customer" class="form-select form-select-sm">
+          <option value="">All customers</option>
+          {% for c in customers %}
+          <option value="{{ c.pk }}" {% if customer_f == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Supplier</label>
+        <select name="supplier" class="form-select form-select-sm">
+          <option value="">All suppliers</option>
+          {% for s in suppliers %}
+          <option value="{{ s.pk }}" {% if supplier_f == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Group by</label>
+        <select name="group" class="form-select form-select-sm">
+          <option value="customer"    {% if group_by == 'customer' %}selected{% endif %}>Customer</option>
+          <option value="supplier"    {% if group_by == 'supplier' %}selected{% endif %}>Supplier</option>
+          <option value="type"        {% if group_by == 'type' %}selected{% endif %}>Fixed / Mobile</option>
+          <option value="destination" {% if group_by == 'destination' %}selected{% endif %}>Destination</option>
+          <option value="day"         {% if group_by == 'day' %}selected{% endif %}>Day</option>
+          <option value="hour"        {% if group_by == 'hour' %}selected{% endif %}>Hour of Day</option>
+        </select>
+      </div>
+      <div class="col-auto mt-3">
+        <button class="btn btn-sm btn-primary" type="submit">Run</button>
+        <a href="{% url 'qos:minutes_analysis' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if has_run %}
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Group</th>
+          <th class="text-end">Calls</th>
+          <th class="text-end">Connected</th>
+          <th class="text-end">ASR %</th>
+          <th class="text-end">ACD (s)</th>
+          <th class="text-end">Actual Min</th>
+          <th class="text-end">Billed Min</th>
+          <th class="text-end">Revenue</th>
+          <th class="text-end">Cost</th>
+          <th class="text-end">GP</th>
+          <th class="text-end">Margin %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.label }}</td>
+          <td class="text-end">{{ row.calls|floatformat:0 }}</td>
+          <td class="text-end">{{ row.connected|floatformat:0 }}</td>
+          <td class="text-end">
+            <span class="{% if row.asr < 40 %}text-danger{% elif row.asr < 60 %}text-warning{% else %}text-success{% endif %}">
+              {{ row.asr|floatformat:1 }}%
+            </span>
+          </td>
+          <td class="text-end">{{ row.acd|floatformat:1 }}</td>
+          <td class="text-end">{{ row.minutes|floatformat:1 }}</td>
+          <td class="text-end text-muted small">
+            {% if row.billed_minutes %}{{ row.billed_minutes|floatformat:1 }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end">
+            {% if row.revenue %}{{ row.revenue|floatformat:4 }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end">
+            {% if row.cost %}{{ row.cost|floatformat:4 }}{% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td class="text-end fw-semibold {% if row.gp < 0 %}text-danger{% elif row.gp > 0 %}text-success{% endif %}">
+            {% if row.revenue or row.cost %}{{ row.gp|floatformat:4 }}{% else %}<span class="text-muted fw-normal">—</span>{% endif %}
+          </td>
+          <td class="text-end small">
+            {% if row.revenue and row.revenue > 0 %}
+              {% widthratio row.gp row.revenue 100 %}%
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="11" class="text-center text-muted py-4">No CDR data for selected filters.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot class="table-light fw-semibold">
+        <tr>
+          <td>TOTAL ({{ rows|length }} groups)</td>
+          <td class="text-end">{{ totals.calls|floatformat:0 }}</td>
+          <td class="text-end">{{ totals.connected|floatformat:0 }}</td>
+          <td colspan="2"></td>
+          <td class="text-end">{{ totals.minutes|floatformat:1 }}</td>
+          <td class="text-end">{{ totals.billed_minutes|floatformat:1 }}</td>
+          <td class="text-end">{{ totals.revenue|floatformat:4 }}</td>
+          <td class="text-end">{{ totals.cost|floatformat:4 }}</td>
+          <td class="text-end {% if totals.gp < 0 %}text-danger{% elif totals.gp > 0 %}text-success{% endif %}">
+            {{ totals.gp|floatformat:4 }}
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% if rows and not rows.0.revenue %}
+<div class="alert alert-info mt-3 py-2 small">
+  <i class="bi bi-info-circle me-1"></i>
+  Revenue and cost show <strong>—</strong> because CDRs have not been rated yet.
+  Run <code>py manage.py process_cdrs</code> to calculate costs and revenue.
+</div>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-bar-chart-line" style="font-size:2rem;opacity:.3"></i>
+    <p class="mt-2 mb-0">Select a date range or filter and click <strong>Run</strong>.</p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

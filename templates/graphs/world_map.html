@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Traffic by Destination{% endblock %}
+
+{% block content %}
+<h5 class="mb-3"><i class="bi bi-globe2 me-1"></i> Traffic by Destination</h5>
+<p class="text-muted small">Top 50 destinations ranked by the chosen metric for the selected period.</p>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="metric" class="form-select form-select-sm">
+          <option value="minutes" {% if metric == 'minutes' %}selected{% endif %}>Minutes</option>
+          <option value="gp"      {% if metric == 'gp' %}selected{% endif %}>Gross Profit</option>
+          <option value="revenue" {% if metric == 'revenue' %}selected{% endif %}>Revenue</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <input type="date" name="from" value="{{ from_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <input type="date" name="to" value="{{ to_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Destination</th>
+          <th>Prefix</th>
+          <th class="text-end">Calls</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">Revenue</th>
+          <th class="text-end">GP</th>
+          <th>GP Bar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+          {% with max_val=rows.0.val %}
+          {% for row in rows %}
+          <tr>
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ row.name }}</td>
+            <td><code class="small">{{ row.prefix }}</code></td>
+            <td class="text-end text-muted">{{ row.calls }}</td>
+            <td class="text-end">{{ row.minutes|floatformat:1 }}</td>
+            <td class="text-end">{{ row.revenue|floatformat:2 }}</td>
+            <td class="text-end {% if row.gp < 0 %}text-danger{% endif %}">{{ row.gp|floatformat:2 }}</td>
+            <td style="min-width:80px">
+              {% if max_val and row.val > 0 %}
+              <div class="progress" style="height:6px">
+                <div class="progress-bar {% if row.gp < 0 %}bg-danger{% else %}bg-success{% endif %}"
+                     style="width:{% widthratio row.val max_val 100 %}%"></div>
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% endwith %}
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-5">
+          <i class="bi bi-globe2" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+          No CDR data for the selected period.
+        </td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

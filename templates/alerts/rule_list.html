@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Alerts Setup{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Alert Rules</h5>
+  <a href="{% url 'alerts:rule_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> New Rule
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Rule Name</th><th>Type</th><th>Company</th><th>Destination</th>
+          <th class="text-end">Threshold</th><th>Window (min)</th><th>Active</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+        <tr>
+          <td><strong>{{ rule.name }}</strong></td>
+          <td><span class="badge bg-secondary">{{ rule.get_alert_type_display }}</span></td>
+          <td>{{ rule.company.name|default:"All" }}</td>
+          <td>{{ rule.destination.name|default:"All" }}</td>
+          <td class="text-end">{{ rule.threshold_value }}</td>
+          <td class="text-center">{{ rule.check_window_minutes }}</td>
+          <td>{% if rule.is_active %}<span class="badge bg-success">Yes</span>
+              {% else %}<span class="badge bg-secondary">No</span>{% endif %}</td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'alerts:rule_edit' rule.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'alerts:rule_delete' rule.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No alert rules configured. <a href="{% url 'alerts:rule_add' %}">Add one.</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

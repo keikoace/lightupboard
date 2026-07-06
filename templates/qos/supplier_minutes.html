@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Supplier Minutes{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Supplier Minutes</h5>
+
+<div class="row g-3">
+  <!-- Supplier list -->
+  <div class="col-lg-3">
+    <div class="card">
+      <div class="card-header">Select Supplier</div>
+      <div class="list-group list-group-flush" style="max-height:70vh;overflow-y:auto">
+        {% for company in companies %}
+        <a href="?company={{ company.pk }}&granularity={{ granularity }}&from={{ from_date }}&to={{ to_date }}"
+           class="list-group-item list-group-item-action {% if selected == company.pk|stringformat:'s' %}active{% endif %}">
+          {{ company.name }}
+        </a>
+        {% empty %}
+        <div class="list-group-item text-muted">No suppliers.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Main panel -->
+  <div class="col-lg-9">
+    {% if selected %}
+    <!-- Filters -->
+    <form method="get" class="card mb-3">
+      <div class="card-body py-2">
+        <input type="hidden" name="company" value="{{ selected }}">
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label small mb-1">From</label>
+            <input type="date" name="from" value="{{ from_date }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">To</label>
+            <input type="date" name="to" value="{{ to_date }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-auto">
+            <label class="form-label small mb-1">Granularity</label>
+            <select name="granularity" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="daily"  {% if granularity == 'daily'  %}selected{% endif %}>Daily</option>
+              <option value="hourly" {% if granularity == 'hourly' %}selected{% endif %}>Hourly</option>
+            </select>
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-sm btn-secondary" type="submit">Apply</button>
+            <a href="?company={{ selected }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="card-body p-0" style="max-height:65vh;overflow-y:auto">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th>{% if granularity == 'daily' %}Date{% else %}Hour{% endif %}</th>
+              <th>Destination</th>
+              <th class="text-end">Calls</th>
+              <th class="text-end">Connected</th>
+              <th class="text-end">Minutes</th>
+              <th class="text-end">ASR %</th>
+              <th class="text-end">{{ value_label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+            <tr>
+              <td class="text-nowrap">
+                {% if granularity == 'daily' %}{{ r.period|date:"Y-m-d" }}
+                {% else %}{{ r.period|date:"Y-m-d H:i" }}{% endif %}
+              </td>
+              <td>{{ r.destination }}</td>
+              <td class="text-end">{{ r.total_calls }}</td>
+              <td class="text-end">{{ r.connected }}</td>
+              <td class="text-end">{{ r.minutes|floatformat:2 }}</td>
+              <td class="text-end">{{ r.asr|floatformat:1 }}%</td>
+              <td class="text-end">{{ r.value|floatformat:4 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No data for this supplier.</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if totals %}
+          <tfoot class="table-dark fw-semibold">
+            <tr>
+              <td colspan="2">Total</td>
+              <td class="text-end">{{ totals.total_calls }}</td>
+              <td class="text-end">{{ totals.connected }}</td>
+              <td class="text-end">{{ totals.minutes|floatformat:2 }}</td>
+              <td class="text-end">{{ totals.asr|floatformat:1 }}%</td>
+              <td class="text-end">{{ totals.value|floatformat:4 }}</td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">Select a supplier on the left.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

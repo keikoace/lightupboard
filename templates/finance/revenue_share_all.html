@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}All AMs — Revenue Share{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-people me-1"></i> Revenue Share — All Account Managers</h5>
+  <div class="d-flex gap-2 align-items-center">
+    {% if fx_date %}
+    <span class="text-muted small"><i class="bi bi-currency-exchange me-1"></i> FX: {{ fx_date }} &mdash; all amounts in EUR</span>
+    {% endif %}
+    <a href="{% url 'finance:my_revenue_share' %}?year={{ year }}&month={{ month }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-person me-1"></i> My Share
+    </a>
+  </div>
+</div>
+
+<!-- Period filter -->
+<form method="get" class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Year</label>
+        <select name="year" class="form-select form-select-sm">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Month</label>
+        <select name="month" class="form-select form-select-sm">
+          {% for m_num, m_name in months %}
+          <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      </div>
+      <div class="col text-end text-muted small">{{ period_start|date:"F Y" }}</div>
+    </div>
+  </div>
+</form>
+
+<!-- AM overview table -->
+<div class="card">
+  <div class="card-header py-2 fw-semibold">
+    <i class="bi bi-table me-1"></i> {{ period_start|date:"F Y" }} — Summary
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Account Manager</th>
+          <th class="text-end">CDR Profit (€)</th>
+          <th class="text-end">CDR Share (€)</th>
+          <th class="text-end">Billable (€)</th>
+          <th class="text-end">Billable Share (€)</th>
+          <th class="text-end fw-bold">Total Share (€)</th>
+          <th class="text-end">Minutes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in am_results %}
+        <tr>
+          <td class="fw-semibold">
+            <div>{{ entry.am.get_full_name|default:entry.am.username }}</div>
+            <div class="text-muted small">{{ entry.am.email }}</div>
+          </td>
+          <td class="text-end">{{ entry.totals.cdr_profit_eur|floatformat:2 }}</td>
+          <td class="text-end text-success">{{ entry.totals.cdr_share_eur|floatformat:2 }}</td>
+          <td class="text-end text-muted">{{ entry.totals.billable_eur|floatformat:2 }}</td>
+          <td class="text-end text-info">{{ entry.totals.billable_share_eur|floatformat:2 }}</td>
+          <td class="text-end fw-bold" style="color:var(--accent)">{{ entry.totals.total_share_eur|floatformat:2 }}</td>
+          <td class="text-end text-muted small">{{ entry.totals.minutes|floatformat:0 }}</td>
+          <td>
+            <a href="{% url 'finance:my_revenue_share' %}?year={{ year }}&month={{ month }}" class="btn btn-sm btn-outline-secondary py-0" title="View detail">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-5">
+            <i class="bi bi-people" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+            No account managers with traffic in {{ period_start|date:"F Y" }}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if am_results %}
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>Total</td>
+          <td class="text-end">
+            {% with total_cdr=am_results|length %}{{ am_results.0.totals.cdr_profit_eur|floatformat:0 }}{% endwith %}
+          </td>
+          <td class="text-end text-success" colspan="2"></td>
+          <td class="text-end text-info"></td>
+          <td class="text-end" style="color:var(--accent)">
+            {# Sum in template is not available natively — just label #}
+            see individual rows
+          </td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

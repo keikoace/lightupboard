@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ object_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h6 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Confirm Delete</h6>
+      </div>
+      <div class="card-body">
+        <p>Are you sure you want to delete <strong>{{ object_name }}</strong>?</p>
+        {% if warning %}
+          <div class="alert alert-warning small">{{ warning }}</div>
+        {% endif %}
+        <p class="text-muted small">This action cannot be undone.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash"></i> Yes, Delete
+            </button>
+            <a href="{{ cancel_url }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

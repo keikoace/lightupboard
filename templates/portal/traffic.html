@@ -1,0 +1,114 @@
+{% extends "portal/base.html" %}
+{% block title %}Traffic — {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0 fw-bold" style="color:#1a4f8a"><i class="bi bi-activity me-2"></i>Traffic</h4>
+</div>
+
+<!-- Period filter -->
+<form method="get" class="card mb-4">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Year</label>
+        <select name="year" class="form-select form-select-sm">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Month</label>
+        <select name="month" class="form-select form-select-sm">
+          {% for m_num, m_name in months %}
+          <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      </div>
+      <div class="col text-end">
+        <a href="{% url 'portal:cdr_export' %}?year={{ year }}&month={{ month }}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-download me-1"></i>Export CSV
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Minutes</div>
+      <div class="kpi-value">{{ totals.minutes|floatformat:0 }}</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Calls</div>
+      <div class="kpi-value">{{ totals.calls }}</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-label">Destinations</div>
+      <div class="kpi-value">{{ rows|length }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Destination table -->
+<div class="card">
+  <div class="card-header py-2">By Destination</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Destination</th>
+          <th>Prefix</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">Calls</th>
+          <th class="text-end">Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.dest_name }}</td>
+          <td class="text-muted small">{{ row.dest_prefix }}</td>
+          <td class="text-end">{{ row.minutes|floatformat:1 }}</td>
+          <td class="text-end text-muted">{{ row.call_count }}</td>
+          <td class="text-end">
+            {% if totals.minutes > 0 %}
+            <div class="d-flex align-items-center justify-content-end gap-2">
+              <div class="progress flex-grow-1" style="height:6px;max-width:80px">
+                <div class="progress-bar" style="width:{% widthratio row.minutes totals.minutes 100 %}%;background:#1a4f8a"></div>
+              </div>
+              <span class="text-muted small">{% widthratio row.minutes totals.minutes 100 %}%</span>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-5">
+          <i class="bi bi-activity" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+          No traffic data for {{ period_start|date:"F Y" }}.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot class="table-light fw-semibold">
+        <tr>
+          <td colspan="2">Total</td>
+          <td class="text-end">{{ totals.minutes|floatformat:1 }}</td>
+          <td class="text-end">{{ totals.calls }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

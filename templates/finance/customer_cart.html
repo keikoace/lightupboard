@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Cart – {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0">
+      <a href="{% url 'setup:company_detail' customer.pk %}" class="text-secondary text-decoration-none">{{ customer.name }}</a>
+      <span class="text-muted mx-1">/</span>
+      Billable Items
+    </h5>
+    <small class="text-muted">{{ active_items.count }} active item{{ active_items.count|pluralize }} &mdash; {{ customer.currency }}</small>
+  </div>
+  <a href="{% url 'finance:cart_item_add' customer.pk %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Add Item
+  </a>
+</div>
+
+<!-- Active items -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-cart3 me-1"></i> Active Items</span>
+    {% if active_items %}
+    <span class="text-accent fw-bold">
+      Total recurring/month:
+      {% with total=0 %}
+        <span id="monthly-total">—</span>
+      {% endwith %}
+    </span>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Description</th>
+          <th>Billing</th>
+          <th class="text-end">Unit Price</th>
+          <th class="text-end">Qty</th>
+          <th class="text-end">Total</th>
+          <th>Currency</th>
+          <th>Service Start</th>
+          <th>Next Invoice</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in active_items %}
+        <tr>
+          <td>
+            {{ item.description }}
+            {% if item.notes %}
+            <i class="bi bi-chat-left-text text-muted ms-1" title="{{ item.notes }}" style="font-size:0.75rem"></i>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.billing_type == 'one_time' %}
+              <span class="badge bg-secondary">One-time</span>
+            {% elif item.billing_type == 'monthly' %}
+              <span class="badge bg-info">Monthly</span>
+            {% elif item.billing_type == 'quarterly' %}
+              <span class="badge bg-info">Quarterly</span>
+            {% elif item.billing_type == 'half_yearly' %}
+              <span class="badge bg-info">Half-yearly</span>
+            {% elif item.billing_type == 'yearly' %}
+              <span class="badge bg-purple" style="background:rgba(157,92,255,0.18)!important;color:#9d5cff!important;border:1px solid rgba(157,92,255,0.3)">Yearly</span>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ item.unit_price }}</td>
+          <td class="text-end">{{ item.quantity }}</td>
+          <td class="text-end fw-bold">{{ item.total }}</td>
+          <td>{{ item.currency }}</td>
+          <td>{{ item.service_start|default:"—" }}</td>
+          <td>
+            {% if item.is_recurring %}
+              {{ item.next_billing_date|default:"—" }}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'finance:cart_item_edit' item.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'finance:cart_item_delete' item.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center text-muted py-4">
+            No active items. <a href="{% url 'finance:cart_item_add' customer.pk %}">Add the first one.</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Inactive / cancelled items -->
+{% if inactive_items %}
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-archive me-1"></i> Cancelled / Inactive Items
+    <span class="badge bg-secondary ms-1">{{ inactive_items.count }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0 align-middle" style="opacity:0.6">
+      <thead class="table-light">
+        <tr>
+          <th>Description</th>
+          <th>Billing</th>
+          <th class="text-end">Total</th>
+          <th>Currency</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inactive_items %}
+        <tr>
+          <td><s>{{ item.description }}</s></td>
+          <td>{{ item.get_billing_type_display }}</td>
+          <td class="text-end">{{ item.total }}</td>
+          <td>{{ item.currency }}</td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'finance:cart_item_edit' item.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit / Re-activate"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'finance:cart_item_delete' item.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

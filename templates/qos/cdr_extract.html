@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}CDR Extract{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">CDR Extract</h5>
+  <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-sm btn-outline-success"><i class="bi bi-download"></i> Export CSV</a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end flex-wrap">
+      <div class="col-auto">
+        <label class="form-label small mb-1">From</label>
+        <input type="datetime-local" name="from" value="{{ request.GET.from }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">To</label>
+        <input type="datetime-local" name="to" value="{{ request.GET.to }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Customer</label>
+        <select name="customer" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for c in customers %}
+          <option value="{{ c.pk }}" {% if request.GET.customer == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Supplier</label>
+        <select name="supplier" class="form-select form-select-sm">
+          <option value="">All</option>
+          {% for s in suppliers %}
+          <option value="{{ s.pk }}" {% if request.GET.supplier == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Destination</label>
+        <select name="destination" class="form-select form-select-sm" style="min-width:160px">
+          <option value="">All</option>
+          {% for d in destinations %}
+          <option value="{{ d.pk }}" {% if destination_id == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">DNIS</label>
+        <input type="text" name="dnis" value="{{ request.GET.dnis }}" class="form-control form-control-sm" placeholder="Prefix or full number" style="width:140px">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Cause</label>
+        <input type="number" name="cause" value="{{ cause }}" class="form-control form-control-sm" placeholder="e.g. 16" style="width:80px">
+      </div>
+      <div class="col-auto mt-3">
+        <button class="btn btn-sm btn-secondary" type="submit">Search</button>
+        <a href="{% url 'qos:cdr_extract' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0" style="max-height:65vh;overflow-y:auto">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light sticky-top">
+        <tr>
+          <th>Start Time</th><th>Customer</th><th>Supplier</th>
+          <th>ANI</th><th>DNIS</th><th>Destination</th>
+          <th class="text-end" title="Actual call duration">Dur (s)</th>
+          <th class="text-end" title="Sell-side billed seconds">Sell (s)</th>
+          <th class="text-end" title="Buy-side billed seconds">Buy (s)</th>
+          <th class="text-end">Revenue</th>
+          <th class="text-end">Cost</th>
+          <th class="text-end">GP</th>
+          <th>Cause</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cdr in cdrs %}
+        <tr>
+          <td class="small">{{ cdr.start_time|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ cdr.customer.name|default:"—" }}</td>
+          <td>{{ cdr.supplier.name|default:"—" }}</td>
+          <td><code>{{ cdr.ani|default:"—" }}</code></td>
+          <td><code>{{ cdr.dnis|default:"—" }}</code></td>
+          <td>
+            {% if cdr.destination %}
+              <a href="?{{ request.GET.urlencode }}&destination={{ cdr.destination_id }}"
+                 class="text-decoration-none {% if destination_id == cdr.destination_id|stringformat:'s' %}fw-semibold{% endif %}"
+                 title="Filter by this destination">
+                {{ cdr.destination.name }}
+              </a>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-end text-muted">{{ cdr.duration_sec }}</td>
+          <td class="text-end">{{ cdr.sell_billed_duration_sec }}</td>
+          <td class="text-end {% if cdr.buy_billed_duration_sec != cdr.sell_billed_duration_sec %}text-warning{% endif %}">
+            {{ cdr.buy_billed_duration_sec }}
+          </td>
+          <td class="text-end">{{ cdr.sell_revenue|floatformat:4 }}</td>
+          <td class="text-end">{{ cdr.buy_cost|floatformat:4 }}</td>
+          <td class="text-end fw-semibold {% if cdr.gross_profit < 0 %}text-danger{% endif %}">
+            {{ cdr.gross_profit|floatformat:4 }}
+          </td>
+          <td>
+            {% if cdr.disconnect_cause is not None %}
+              <a href="?{{ request.GET.urlencode }}&cause={{ cdr.disconnect_cause }}"
+                 class="text-decoration-none {% if cause == cdr.disconnect_cause|stringformat:'s' %}fw-semibold{% endif %}"
+                 title="Filter by cause {{ cdr.disconnect_cause }}">
+                {{ cdr.disconnect_cause }}
+              </a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="13" class="text-center text-muted py-4">No CDRs found. Apply filters and search.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="text-muted small mt-2">
+  <i class="bi bi-info-circle"></i>
+  <strong>Sell (s)</strong> = seconds billed to customer &nbsp;·&nbsp;
+  <strong>Buy (s)</strong> = seconds charged by supplier.
+  A <span class="text-warning fw-semibold">highlighted</span> buy column means the two sides used different billing increments.
+  Click a <strong>Destination</strong> or <strong>Cause</strong> value to filter by it.
+</p>
+{% endblock %}

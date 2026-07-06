@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Gross Profit{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-1"></i> Gross Profit &amp; Margin</h5>
+  {% if fx_date %}
+  <span class="text-muted small"><i class="bi bi-currency-exchange me-1"></i> ECB rates: {{ fx_date }}</span>
+  {% else %}
+  <span class="badge bg-warning text-dark small">No FX rates — run <code>py manage.py fetch_exchange_rates</code></span>
+  {% endif %}
+</div>
+
+<!-- ── Filters ── -->
+<form method="get" class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Year</label>
+        <select name="year" class="form-select form-select-sm">
+          {% for y in years %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Month</label>
+        <select name="month" class="form-select form-select-sm">
+          {% for m_num, m_name in months %}
+          <option value="{{ m_num }}" {% if m_num == month %}selected{% endif %}>{{ m_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Display currency</label>
+        <select name="ccy" class="form-select form-select-sm">
+          {% for c in currencies %}
+          <option value="{{ c }}" {% if c == display_ccy %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      </div>
+      <div class="col text-end text-muted small">
+        Showing <strong>{{ period_start|date:"F Y" }}</strong> — all amounts in <strong>{{ display_ccy }}</strong>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- ── KPI Cards ── -->
+<div class="row g-3 mb-3">
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <div class="small text-muted">Revenue</div>
+        <div class="fs-5 fw-bold" style="color:var(--accent)">
+          {{ totals.sell_display|floatformat:2 }} {{ display_ccy }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <div class="small text-muted">Cost</div>
+        <div class="fs-5 fw-bold text-secondary">
+          {{ totals.buy_display|floatformat:2 }} {{ display_ccy }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <div class="small text-muted">Gross Profit</div>
+        <div class="fs-5 fw-bold {% if totals.margin_display < 0 %}text-danger{% else %}text-success{% endif %}">
+          {{ totals.margin_display|floatformat:2 }} {{ display_ccy }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body py-2">
+        <div class="small text-muted">Margin %</div>
+        <div class="fs-5 fw-bold {% if totals.margin_pct < 0 %}text-danger{% elif totals.margin_pct < 5 %}text-warning{% else %}text-success{% endif %}">
+          {{ totals.margin_pct|floatformat:1 }}%
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if totals.negative_count %}
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+  <div>
+    <strong>{{ totals.negative_count }} route{{ totals.negative_count|pluralize }}</strong>
+    show a negative real margin after currency conversion — you may be selling below cost in {{ display_ccy }} terms.
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Destination table ── -->
+<div class="card">
+  <div class="card-header py-2 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold"><i class="bi bi-table me-1"></i> By Destination</span>
+    <span class="small text-muted">
+      {{ rows|length }} destination{{ rows|length|pluralize }} &bull;
+      {{ totals.minutes|floatformat:0 }} min &bull;
+      {{ totals.calls }} calls
+    </span>
+  </div>
+  <div class="card-body p-0" style="overflow-x:auto">
+    <table class="table table-hover table-sm mb-0 align-middle" style="font-size:.84rem;min-width:900px">
+      <thead class="table-light">
+        <tr>
+          <th>Destination</th>
+          <th>Prefix</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">Calls</th>
+          <th class="text-end">Sell (orig ccy)</th>
+          <th class="text-end">Buy (orig ccy)</th>
+          <th class="text-end">Sell {{ display_ccy }}</th>
+          <th class="text-end">Buy {{ display_ccy }}</th>
+          <th class="text-end">Margin {{ display_ccy }}</th>
+          <th class="text-end">Margin %</th>
+          <th class="text-center">FX?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="{% if row.negative %}table-danger{% elif row.cross_currency %}table-warning{% endif %}">
+          <td class="fw-semibold">{{ row.dest_name }}</td>
+          <td class="text-muted small">{{ row.dest_prefix }}</td>
+          <td class="text-end">{{ row.minutes|floatformat:1 }}</td>
+          <td class="text-end text-muted">{{ row.call_count }}</td>
+          <td class="text-end text-muted small">
+            {{ row.total_sell|floatformat:2 }} <span class="text-muted">{{ row.sell_ccy }}</span>
+          </td>
+          <td class="text-end text-muted small">
+            {{ row.total_buy|floatformat:2 }} <span class="text-muted">{{ row.buy_ccy }}</span>
+          </td>
+          <td class="text-end">{{ row.sell_display|floatformat:2 }}</td>
+          <td class="text-end">{{ row.buy_display|floatformat:2 }}</td>
+          <td class="text-end fw-semibold {% if row.negative %}text-danger{% else %}text-success{% endif %}">
+            {{ row.margin_display|floatformat:2 }}
+          </td>
+          <td class="text-end {% if row.margin_pct < 0 %}text-danger fw-bold{% elif row.margin_pct < 5 %}text-warning{% else %}text-success{% endif %}">
+            {{ row.margin_pct|floatformat:1 }}%
+          </td>
+          <td class="text-center">
+            {% if row.cross_currency %}
+            <span class="badge bg-warning text-dark" title="Sell in {{ row.sell_ccy }}, buy in {{ row.buy_ccy }}">
+              {{ row.sell_ccy }}/{{ row.buy_ccy }}
+            </span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="11" class="text-center text-muted py-5">
+            <i class="bi bi-graph-up" style="font-size:2rem;opacity:.3;display:block;margin-bottom:8px"></i>
+            No CDR data for {{ period_start|date:"F Y" }}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td colspan="2">Total</td>
+          <td class="text-end">{{ totals.minutes|floatformat:0 }}</td>
+          <td class="text-end">{{ totals.calls }}</td>
+          <td class="text-end" colspan="2"></td>
+          <td class="text-end">{{ totals.sell_display|floatformat:2 }}</td>
+          <td class="text-end">{{ totals.buy_display|floatformat:2 }}</td>
+          <td class="text-end {% if totals.margin_display < 0 %}text-danger{% else %}text-success{% endif %}">
+            {{ totals.margin_display|floatformat:2 }}
+          </td>
+          <td class="text-end {% if totals.margin_pct < 0 %}text-danger{% elif totals.margin_pct < 5 %}text-warning{% else %}text-success{% endif %}">
+            {{ totals.margin_pct|floatformat:1 }}%
+          </td>
+          <td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<div class="mt-2 text-muted small">
+  <i class="bi bi-info-circle me-1"></i>
+  <strong class="text-warning">Yellow rows</strong> = cross-currency route (sell &amp; buy in different currencies).
+  <strong class="text-danger">Red rows</strong> = negative margin after FX conversion — you are selling below cost.
+  Rates from ECB{% if fx_date %} ({{ fx_date }}){% endif %}.
+  <a href="{% url 'finance:currency_rates' %}" class="ms-2">View all rates →</a>
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ ticket.pk }} – {{ ticket.subject }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <a href="{% url 'setup:ticket_list' %}" class="btn btn-sm btn-outline-secondary me-2">
+      <i class="bi bi-arrow-left"></i> All Tickets
+    </a>
+    <span class="text-muted small">Ticket #{{ ticket.pk }}</span>
+  </div>
+  <div class="d-flex gap-2">
+    <!-- Quick-status buttons -->
+    {% if ticket.status != 'open' %}
+    <form method="post" action="{% url 'setup:ticket_update' ticket.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="status">
+      <input type="hidden" name="status" value="open">
+      <button class="btn btn-sm btn-outline-success">Re-open</button>
+    </form>
+    {% endif %}
+    {% if ticket.status == 'open' %}
+    <form method="post" action="{% url 'setup:ticket_update' ticket.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="status">
+      <input type="hidden" name="status" value="pending">
+      <button class="btn btn-sm btn-outline-warning">Mark Pending</button>
+    </form>
+    {% endif %}
+    {% if ticket.status != 'closed' %}
+    <form method="post" action="{% url 'setup:ticket_update' ticket.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="status">
+      <input type="hidden" name="status" value="closed">
+      <button class="btn btn-sm btn-outline-secondary">Close Ticket</button>
+    </form>
+    {% endif %}
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+      <i class="bi bi-pencil"></i> Edit
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- ── Ticket body ── -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">{{ ticket.subject }}</span>
+        <div class="d-flex gap-1">
+          <span class="badge {{ ticket.priority_badge_class }}">{{ ticket.get_priority_display }}</span>
+          <span class="badge {{ ticket.status_badge_class }}">{{ ticket.get_status_display }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if ticket.description %}
+        <p class="mb-0" style="white-space:pre-wrap">{{ ticket.description }}</p>
+        {% else %}
+        <p class="text-muted mb-0 fst-italic">No description provided.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Meta panel ── -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header py-2 fw-semibold">Details</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr>
+              <th class="text-muted small" style="width:40%">Company</th>
+              <td>
+                {% if ticket.company %}
+                <a href="{% url 'setup:company_detail' ticket.company.pk %}">{{ ticket.company.name }}</a>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted small">Status</th>
+              <td><span class="badge {{ ticket.status_badge_class }}">{{ ticket.get_status_display }}</span></td>
+            </tr>
+            <tr>
+              <th class="text-muted small">Priority</th>
+              <td><span class="badge {{ ticket.priority_badge_class }}">{{ ticket.get_priority_display }}</span></td>
+            </tr>
+            <tr>
+              <th class="text-muted small">Created by</th>
+              <td>{{ ticket.created_by.get_full_name|default:ticket.created_by.username|default:"—" }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted small">Created at</th>
+              <td class="small">{{ ticket.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted small">Updated at</th>
+              <td class="small">{{ ticket.updated_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% if ticket.resolved_at %}
+            <tr>
+              <th class="text-muted small">Resolved at</th>
+              <td class="small">{{ ticket.resolved_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /row -->
+
+<!-- ── Edit Modal ── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'setup:ticket_update' ticket.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Ticket #{{ ticket.pk }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subject</label>
+            <input type="text" name="subject" class="form-control" value="{{ ticket.subject }}" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-8">
+              <label class="form-label fw-semibold">Company</label>
+              <select name="company" class="form-select">
+                <option value="">— none —</option>
+                {% for c in companies %}
+                <option value="{{ c.pk }}" {% if ticket.company_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold">Priority</label>
+              <select name="priority" class="form-select">
+                <option value="low"      {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
+                <option value="medium"   {% if ticket.priority == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="high"     {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
+                <option value="critical" {% if ticket.priority == 'critical' %}selected{% endif %}>Critical</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" class="form-control" rows="5">{{ ticket.description }}</textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Switches – Setup{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Switches / SBCs</h5>
+  <a href="{% url 'setup:switch_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Add Switch
+  </a>
+</div>
+
+{# CDR API info card #}
+<div class="alert alert-info d-flex align-items-start gap-2 mb-3" role="alert">
+  <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+  <div>
+    <strong>CDR Ingestion API</strong> — configure your switch to POST call records to
+    <code>http://&lt;your-server&gt;/api/cdr/ingest/</code> with the header
+    <code>Authorization: Token &lt;api-token&gt;</code> (see each switch row below).
+    <a href="#cdr-api-docs" data-bs-toggle="collapse" class="ms-1">Show example&nbsp;›</a>
+    <div id="cdr-api-docs" class="collapse mt-2">
+<pre class="bg-dark text-light rounded p-3 mb-0" style="font-size:.8rem">POST /api/cdr/ingest/ HTTP/1.1
+Authorization: Token 550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+
+[
+  {
+    "call_id":          "abc-123",
+    "ani":              "441234567890",
+    "dnis":             "4420123456",
+    "start_time":       "2026-05-26T10:00:00Z",
+    "answer_time":      "2026-05-26T10:00:02Z",
+    "end_time":         "2026-05-26T10:02:35Z",
+    "duration_sec":     155,
+    "disconnect_cause": 16
+  }
+]</pre>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>IP Address</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>API Token</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sw in switches %}
+        <tr>
+          <td><strong>{{ sw.name }}</strong></td>
+          <td><code>{{ sw.ip_address }}</code></td>
+          <td class="text-muted">{{ sw.description|default:"—" }}</td>
+          <td>
+            {% if sw.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="input-group input-group-sm" style="min-width:280px">
+              <input type="text" class="form-control form-control-sm font-monospace"
+                     id="token-{{ sw.pk }}"
+                     value="{{ sw.api_token }}"
+                     readonly
+                     style="font-size:.75rem">
+              <button class="btn btn-outline-secondary btn-sm"
+                      type="button"
+                      onclick="copyToken('token-{{ sw.pk }}')"
+                      title="Copy token">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'setup:switch_edit' sw.pk %}"
+               class="btn btn-sm btn-outline-primary" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'setup:switch_delete' sw.pk %}"
+               class="btn btn-sm btn-outline-danger" title="Delete">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            No switches configured yet.
+            <a href="{% url 'setup:switch_add' %}">Add your first switch.</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyToken(inputId) {
+  const el = document.getElementById(inputId);
+  el.select();
+  el.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(el.value).then(() => {
+    const btn = el.nextElementSibling;
+    btn.innerHTML = '<i class="bi bi-clipboard-check"></i>';
+    setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+  });
+}
+</script>
+{% endblock %}

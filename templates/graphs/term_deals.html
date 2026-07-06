@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Term Deals Graph{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Term Deals – Progress</h5>
+<p class="text-muted small">Actual vs committed minutes for each active term deal.</p>
+
+{% if rows %}
+<div class="card mb-3">
+  <div class="card-body">
+    <canvas id="termChart" height="100"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<div class="card mt-3">
+  <div class="card-header py-2 fw-semibold">Deal Details</div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Company</th><th>Destination</th><th>Period</th>
+          <th class="text-end">Committed</th><th class="text-end">Actual</th><th class="text-end">Remaining</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.company }}</td>
+          <td>{{ row.destination }}</td>
+          <td class="small text-muted">{{ row.period }}</td>
+          <td class="text-end">{{ row.committed|floatformat:0 }}</td>
+          <td class="text-end">{{ row.actual|floatformat:1 }}</td>
+          <td class="text-end text-muted">{{ row.remaining|floatformat:1 }}</td>
+          <td style="min-width:120px">
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:8px">
+                <div class="progress-bar {% if row.pct >= 100 %}bg-success{% elif row.pct >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                     style="width:{{ row.pct }}%"></div>
+              </div>
+              <span class="small text-muted">{{ row.pct }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-muted text-center py-4">
+          <i class="bi bi-calendar-check" style="font-size:1.5rem;opacity:.3;display:block;margin-bottom:6px"></i>
+          No active term deals. Add them in <a href="/finance/term-deals/">Finance → Term Deals</a>.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if rows %}
+<script>
+new Chart(document.getElementById('termChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: {{ labels_json|safe }},
+    datasets: [
+      { label: 'Committed', data: {{ committed_json|safe }}, backgroundColor: 'rgba(13,110,253,0.25)' },
+      { label: 'Actual',    data: {{ actual_json|safe }},    backgroundColor: 'rgba(13,110,253,0.8)' },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

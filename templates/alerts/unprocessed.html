@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Unprocessed Traffic{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Unprocessed Traffic</h5>
+  <span class="badge bg-{% if cdrs %}danger{% else %}success{% endif %} fs-6">
+    {{ cdrs|length }} unprocessed
+  </span>
+</div>
+
+{% if cdrs %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  These CDRs could not be fully rated (missing tariff, unmatched prefix, etc.) and need attention.
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body p-0" style="max-height:70vh;overflow-y:auto">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light sticky-top">
+        <tr>
+          <th>Start Time</th><th>Customer</th><th>Supplier</th>
+          <th>DNIS</th><th>Destination</th><th class="text-end">Duration (s)</th><th>Issue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cdr in cdrs %}
+        <tr class="table-warning">
+          <td class="small">{{ cdr.start_time|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ cdr.customer.name|default:"—" }}</td>
+          <td>{{ cdr.supplier.name|default:"—" }}</td>
+          <td><code>{{ cdr.dnis|default:"—" }}</code></td>
+          <td>{{ cdr.destination.name|default:"<span class='text-danger'>Unmatched</span>" }}</td>
+          <td class="text-end">{{ cdr.duration_sec }}</td>
+          <td><span class="badge bg-warning text-dark">Unrated</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-success py-4">
+          <i class="bi bi-check-circle-fill"></i> All traffic is processed. Nothing to action.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

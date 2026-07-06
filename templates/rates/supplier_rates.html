@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Supplier Rates{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Supplier Rates</h5>
+  {% if selected_tariff %}
+  <a href="{% url 'rates:rate_import' %}" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-upload"></i> Import CSV</a>
+  <a href="{% url 'rates:rate_add' %}?tariff={{ selected_tariff.pk }}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Add Rate
+  </a>
+  {% endif %}
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="tariff" class="form-select form-select-sm">
+          <option value="">— Select Tariff —</option>
+          {% for t in tariffs %}
+          <option value="{{ t.pk }}" {% if selected_tariff.pk == t.pk %}selected{% endif %}>{{ t.company.name }} – {{ t.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Load</button>
+      </div>
+      {% if selected_tariff %}
+      <div class="col-auto ms-auto">
+        <a href="{% url 'rates:supplier_tariffs' %}" class="btn btn-sm btn-outline-secondary">Manage Tariffs</a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if selected_tariff %}
+<div class="card">
+  <div class="card-header py-2 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">{{ selected_tariff.company.name }} – {{ selected_tariff.name }}</span>
+    <span class="text-muted small">{{ selected_tariff.currency }} · Effective {{ selected_tariff.effective_date }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Prefix</th><th>Destination</th><th class="text-end">Rate/min</th><th>Billing</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for rate in rates %}
+        <tr>
+          <td><code>{{ rate.prefix }}</code></td>
+          <td>{{ rate.destination.name|default:"—" }}</td>
+          <td class="text-end">{{ rate.rate_per_minute }}</td>
+          <td>{{ rate.billing_increment_display }}</td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'rates:rate_edit' rate.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'rates:rate_delete' rate.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No rates in this tariff. <a href="{% url 'rates:rate_add' %}?tariff={{ selected_tariff.pk }}">Add one.</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">Select a tariff above to view its rates.</div>
+{% endif %}
+{% endblock %}

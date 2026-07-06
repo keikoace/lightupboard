@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Email Check Result{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <a href="{% url 'email_import:rule_list' %}" class="btn btn-sm btn-outline-secondary">← Back</a>
+</div>
+<div class="card">
+  <div class="card-header fw-semibold">Check Result</div>
+  <div class="card-body">
+    <pre class="mb-0 small" style="white-space:pre-wrap">{{ output }}</pre>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Currency Rates{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0"><i class="bi bi-currency-exchange me-1"></i> Currency Rates</h5>
+  <div class="d-flex gap-2 align-items-center">
+    {% if latest_date %}
+    <span class="text-muted small">
+      Source: <a href="https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml" target="_blank" rel="noopener" class="text-muted">ECB eurofxref-daily.xml</a>
+      &mdash; rates as of <strong>{{ latest_date }}</strong>
+    </span>
+    {% else %}
+    <span class="badge bg-warning text-dark">No rates loaded yet — run <code>py manage.py fetch_exchange_rates</code></span>
+    {% endif %}
+    <a href="{% url 'finance:dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Finance
+    </a>
+  </div>
+</div>
+
+<!-- ── Rate Matrix ── -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header py-2 fw-semibold">
+        <i class="bi bi-grid-3x3-gap me-1"></i> Rate Matrix
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 text-center align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start ps-3">From ↓ To →</th>
+              {% for c in currencies %}<th>{{ c }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in matrix %}
+            <tr>
+              <td class="text-start ps-3 fw-semibold">{{ row.from }}</td>
+              {% for cell in row.rates %}
+              <td>
+                {% if cell.same %}
+                <span class="text-muted">—</span>
+                {% elif cell.rate %}
+                <span class="fw-bold" style="color:var(--accent)">{{ cell.rate }}</span>
+                {% else %}
+                <span class="text-muted small">N/A</span>
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Live Converter ── -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header py-2 fw-semibold">
+        <i class="bi bi-calculator me-1"></i> Converter
+      </div>
+      <div class="card-body">
+        <div class="row g-2 align-items-end mb-3">
+          <div class="col-4">
+            <label class="form-label small mb-1">Amount</label>
+            <input type="number" id="cvt-amount" class="form-control" value="1000" step="0.01" min="0">
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">From</label>
+            <select id="cvt-from" class="form-select">
+              {% for c in currencies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-1 text-center pb-1">
+            <button class="btn btn-sm btn-outline-secondary" id="cvt-swap" title="Swap">
+              <i class="bi bi-arrow-left-right"></i>
+            </button>
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">To</label>
+            <select id="cvt-to" class="form-select">
+              {% for c in currencies %}
+              <option value="{{ c }}" {% if c == 'USD' %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div id="cvt-result" class="p-3 rounded" style="background:rgba(var(--accent-rgb,99,102,241),.08)">
+          <div class="d-flex justify-content-between align-items-center">
+            <span id="cvt-label" class="text-muted small">—</span>
+            <span id="cvt-value" class="fs-4 fw-bold" style="color:var(--accent)">—</span>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <span class="text-muted" style="font-size:.75rem">Rate used</span>
+            <span id="cvt-rate" class="text-muted" style="font-size:.75rem">—</span>
+          </div>
+        </div>
+
+        <!-- Cross-currency margin check -->
+        <hr class="my-3">
+        <p class="small fw-semibold mb-2"><i class="bi bi-shield-check me-1"></i> Cross-currency margin check</p>
+        <div class="row g-2 align-items-end">
+          <div class="col-3">
+            <label class="form-label small mb-1">Buy price</label>
+            <input type="number" id="mg-buy" class="form-control form-control-sm" placeholder="0.00" step="0.000001">
+          </div>
+          <div class="col-2">
+            <label class="form-label small mb-1">Currency</label>
+            <select id="mg-buy-ccy" class="form-select form-select-sm">
+              {% for c in currencies %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-3">
+            <label class="form-label small mb-1">Sell price</label>
+            <input type="number" id="mg-sell" class="form-control form-control-sm" placeholder="0.00" step="0.000001">
+          </div>
+          <div class="col-2">
+            <label class="form-label small mb-1">Currency</label>
+            <select id="mg-sell-ccy" class="form-select form-select-sm">
+              {% for c in currencies %}
+              <option value="{{ c }}" {% if c == 'USD' %}selected{% endif %}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-2">
+            <label class="form-label small mb-1">Per</label>
+            <select id="mg-unit" class="form-select form-select-sm">
+              <option value="1">unit</option>
+              <option value="60">minute</option>
+              <option value="1000">1 000 u</option>
+            </select>
+          </div>
+        </div>
+        <div id="mg-result" class="mt-2 p-2 rounded small d-none">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Rate History ── -->
+<div class="card">
+  <div class="card-header py-2 fw-semibold">
+    <i class="bi bi-clock-history me-1"></i> 30-Day Rate History — all pairs
+    <span class="text-muted fw-normal small ms-2">ECB source (EUR base) · cross-rates derived</span>
+  </div>
+  <div class="card-body p-0" style="overflow-x:auto">
+    <table class="table table-hover table-sm mb-0 align-middle" style="min-width:680px">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th class="text-end">EUR/USD</th>
+          <th class="text-end">EUR/CHF</th>
+          <th class="text-end">USD/EUR</th>
+          <th class="text-end">CHF/EUR</th>
+          <th class="text-end">USD/CHF</th>
+          <th class="text-end">CHF/USD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in history %}
+        <tr {% if forloop.first %}class="table-active fw-semibold"{% endif %}>
+          <td>{{ row.date }}</td>
+          <td class="text-end">{{ row.EUR_USD|floatformat:6|default:"—" }}</td>
+          <td class="text-end">{{ row.EUR_CHF|floatformat:6|default:"—" }}</td>
+          <td class="text-end">{{ row.USD_EUR|floatformat:6|default:"—" }}</td>
+          <td class="text-end">{{ row.CHF_EUR|floatformat:6|default:"—" }}</td>
+          <td class="text-end">{{ row.USD_CHF|floatformat:6|default:"—" }}</td>
+          <td class="text-end">{{ row.CHF_USD|floatformat:6|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            No rate history yet. Run <code>py manage.py fetch_exchange_rates</code> to populate.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const PAIRS = {{ pairs_json|safe }};
+
+function getRate(from, to) {
+  if (from === to) return 1;
+  return PAIRS[from + '_' + to] ?? null;
+}
+
+function fmt(n, dp=2) {
+  if (n == null) return 'N/A';
+  return n.toLocaleString('en-US', {minimumFractionDigits: dp, maximumFractionDigits: dp});
+}
+
+// ── Converter ──────────────────────────────────────────────────────────────
+function runConverter() {
+  const amount = parseFloat(document.getElementById('cvt-amount').value) || 0;
+  const from   = document.getElementById('cvt-from').value;
+  const to     = document.getElementById('cvt-to').value;
+  const rate   = getRate(from, to);
+  const result = rate != null ? amount * rate : null;
+
+  document.getElementById('cvt-label').textContent =
+    `${fmt(amount, 2)} ${from} =`;
+  document.getElementById('cvt-value').textContent =
+    result != null ? `${fmt(result, 2)} ${to}` : 'Rate unavailable';
+  document.getElementById('cvt-rate').textContent =
+    rate != null ? `1 ${from} = ${rate.toFixed(6)} ${to}` : '—';
+}
+
+document.getElementById('cvt-swap').addEventListener('click', () => {
+  const from = document.getElementById('cvt-from');
+  const to   = document.getElementById('cvt-to');
+  const tmp  = from.value;
+  from.value = to.value;
+  to.value   = tmp;
+  runConverter();
+});
+
+['cvt-amount', 'cvt-from', 'cvt-to'].forEach(id =>
+  document.getElementById(id).addEventListener('input', runConverter)
+);
+runConverter();
+
+// ── Margin check ───────────────────────────────────────────────────────────
+function runMargin() {
+  const buy      = parseFloat(document.getElementById('mg-buy').value);
+  const sell     = parseFloat(document.getElementById('mg-sell').value);
+  const buyCcy   = document.getElementById('mg-buy-ccy').value;
+  const sellCcy  = document.getElementById('mg-sell-ccy').value;
+
+  const el = document.getElementById('mg-result');
+  if (isNaN(buy) || isNaN(sell) || buy <= 0 || sell <= 0) {
+    el.classList.add('d-none');
+    return;
+  }
+
+  // Convert both to EUR for comparison
+  const buyEur  = buy  * (getRate(buyCcy,  'EUR') ?? 1);
+  const sellEur = sell * (getRate(sellCcy, 'EUR') ?? 1);
+  const margin  = sellEur - buyEur;
+  const pct     = buyEur > 0 ? (margin / buyEur * 100) : 0;
+  const positive = margin >= 0;
+
+  el.classList.remove('d-none', 'text-success', 'text-danger', 'bg-success-subtle', 'bg-danger-subtle');
+  el.classList.add(positive ? 'bg-success-subtle' : 'bg-danger-subtle');
+
+  el.innerHTML = `
+    <div class="d-flex justify-content-between">
+      <span>
+        Buy: <strong>${fmt(buy, 6)} ${buyCcy}</strong> = ${fmt(buyEur, 6)} EUR &nbsp;|&nbsp;
+        Sell: <strong>${fmt(sell, 6)} ${sellCcy}</strong> = ${fmt(sellEur, 6)} EUR
+      </span>
+      <span class="${positive ? 'text-success' : 'text-danger'} fw-bold">
+        ${positive ? '✓' : '✗'} Margin: ${fmt(margin, 6)} EUR (${fmt(pct, 2)}%)
+      </span>
+    </div>
+    ${!positive ? '<div class="text-danger mt-1">⚠ You are selling below cost after currency conversion!</div>' : ''}
+  `;
+}
+
+['mg-buy','mg-sell','mg-buy-ccy','mg-sell-ccy','mg-unit'].forEach(id =>
+  document.getElementById(id).addEventListener('input', runMargin)
+);
+</script>
+{% endblock %}

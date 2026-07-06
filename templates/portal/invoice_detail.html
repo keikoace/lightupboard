@@ -1,0 +1,98 @@
+{% extends "portal/base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }} — {{ company.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <a href="{% url 'portal:invoices' %}" class="text-muted small text-decoration-none">
+      <i class="bi bi-arrow-left me-1"></i>Back to invoices
+    </a>
+    <h4 class="mb-0 fw-bold mt-1" style="color:#1a4f8a">Invoice {{ invoice.invoice_number }}</h4>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge badge-{{ invoice.status }} fs-6 px-3 py-2">{{ invoice.get_status_display }}</span>
+    <a href="{% url 'portal:invoice_print' invoice.pk %}" target="_blank" class="btn btn-primary">
+      <i class="bi bi-printer me-1"></i> Print / Download PDF
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-2">Invoice Details</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5 text-muted">Invoice #</dt>    <dd class="col-7 fw-semibold">{{ invoice.invoice_number }}</dd>
+          <dt class="col-5 text-muted">Period</dt>       <dd class="col-7">{{ invoice.period_start|date:"d M Y" }} – {{ invoice.period_end|date:"d M Y" }}</dd>
+          <dt class="col-5 text-muted">Issue Date</dt>   <dd class="col-7">{{ invoice.issue_date|date:"d M Y" }}</dd>
+          <dt class="col-5 text-muted">Due Date</dt>     <dd class="col-7 {% if invoice.status == 'overdue' %}text-danger fw-semibold{% endif %}">{{ invoice.due_date|date:"d M Y" }}</dd>
+          <dt class="col-5 text-muted">Currency</dt>     <dd class="col-7">{{ invoice.currency }}</dd>
+          {% if invoice.vat_rate %}<dt class="col-5 text-muted">VAT Rate</dt><dd class="col-7">{{ invoice.vat_rate }}%</dd>{% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header py-2">Amounts</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-6 text-muted">Subtotal</dt>
+          <dd class="col-6 text-end">{{ invoice.subtotal|floatformat:2 }} {{ invoice.currency }}</dd>
+          <dt class="col-6 text-muted">VAT ({{ invoice.vat_rate }}%)</dt>
+          <dd class="col-6 text-end">{{ invoice.tax_amount|floatformat:2 }} {{ invoice.currency }}</dd>
+          <dt class="col-6 text-muted border-top pt-2 fw-bold">Total</dt>
+          <dd class="col-6 text-end border-top pt-2 fw-bold fs-5">{{ invoice.total_amount|floatformat:2 }} {{ invoice.currency }}</dd>
+          <dt class="col-6 text-muted">Amount Paid</dt>
+          <dd class="col-6 text-end text-success">{{ invoice.amount_paid|floatformat:2 }} {{ invoice.currency }}</dd>
+          <dt class="col-6 text-muted fw-bold">Balance Due</dt>
+          <dd class="col-6 text-end fw-bold {% if invoice.balance_due > 0 %}text-danger{% else %}text-success{% endif %}">
+            {{ invoice.balance_due|floatformat:2 }} {{ invoice.currency }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Line items -->
+<div class="card">
+  <div class="card-header py-2">Line Items</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Period</th>
+          <th class="text-end">Minutes</th>
+          <th class="text-end">Rate</th>
+          <th class="text-end">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ line.title }}</div>
+            {% if line.description %}<div class="text-muted small">{{ line.description }}</div>{% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if line.period_start %}{{ line.period_start|date:"d M" }} – {{ line.period_end|date:"d M Y" }}{% endif %}
+          </td>
+          <td class="text-end">{% if line.minutes %}{{ line.minutes|floatformat:0 }}{% endif %}</td>
+          <td class="text-end text-muted small">{% if line.rate %}{{ line.rate }}{% endif %}</td>
+          <td class="text-end fw-semibold">{{ line.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light">
+        <tr>
+          <td colspan="4" class="text-end fw-bold">Total</td>
+          <td class="text-end fw-bold">{{ invoice.total_amount|floatformat:2 }} {{ invoice.currency }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

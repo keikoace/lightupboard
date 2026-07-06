@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Traffic Alerts{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Traffic Alerts</h5>
+  <span class="badge bg-danger fs-6">
+    {{ events|length }} events
+  </span>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fired At</th><th>Rule</th><th>Type</th><th>Status</th><th>Details</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+        <tr class="{% if event.status == 'open' %}table-danger{% elif event.status == 'acknowledged' %}table-warning{% endif %}">
+          <td class="small">{{ event.fired_at|date:"Y-m-d H:i:s" }}</td>
+          <td><strong>{{ event.rule.name }}</strong></td>
+          <td><span class="badge bg-secondary">{{ event.rule.get_alert_type_display }}</span></td>
+          <td>
+            {% if event.status == 'open' %}<span class="badge bg-danger">Open</span>
+            {% elif event.status == 'acknowledged' %}<span class="badge bg-warning text-dark">Acknowledged</span>
+            {% else %}<span class="badge bg-success">Closed</span>{% endif %}
+          </td>
+          <td class="small text-muted">{{ event.details|default:"—"|truncatechars:80 }}</td>
+          <td style="white-space:nowrap">
+            {% if event.status == 'open' %}
+            <form method="post" action="{% url 'alerts:event_action' event.pk %}" class="d-inline">
+              {% csrf_token %}<input type="hidden" name="action" value="acknowledge">
+              <button class="btn btn-sm btn-outline-warning">Acknowledge</button>
+            </form>
+            {% endif %}
+            {% if event.status != 'closed' %}
+            <form method="post" action="{% url 'alerts:event_action' event.pk %}" class="d-inline ms-1">
+              {% csrf_token %}<input type="hidden" name="action" value="close">
+              <button class="btn btn-sm btn-outline-secondary">Close</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-success py-4">
+          <i class="bi bi-check-circle-fill"></i> No active traffic alerts.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

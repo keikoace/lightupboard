@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}DID Numbers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Numbers <span class="text-muted fs-6 fw-normal">{{ total|default:"0" }} total</span></h5>
+  <a href="{% url 'ddi:number_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Add Number
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+
+      <div class="col-auto">
+        <input type="text" name="q" value="{{ q }}"
+               class="form-control form-control-sm" placeholder="Search number…" style="width:160px">
+      </div>
+
+      <div class="col-auto">
+        <select name="country" class="form-select form-select-sm" style="min-width:140px" onchange="this.form.submit()">
+          <option value="">All countries</option>
+          {% for c in countries %}
+          <option value="{{ c }}" {% if country == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <select name="area" class="form-select form-select-sm" style="width:110px" onchange="this.form.submit()">
+          <option value="">All areas</option>
+          <option value="4121" {% if area == "4121" %}selected{% endif %}>(021)</option>
+          <option value="4122" {% if area == "4122" %}selected{% endif %}>(022)</option>
+          <option value="4124" {% if area == "4124" %}selected{% endif %}>(024)</option>
+          <option value="4126" {% if area == "4126" %}selected{% endif %}>(026)</option>
+          <option value="4127" {% if area == "4127" %}selected{% endif %}>(027)</option>
+          <option value="4131" {% if area == "4131" %}selected{% endif %}>(031)</option>
+          <option value="4132" {% if area == "4132" %}selected{% endif %}>(032)</option>
+          <option value="4133" {% if area == "4133" %}selected{% endif %}>(033)</option>
+          <option value="4134" {% if area == "4134" %}selected{% endif %}>(034)</option>
+          <option value="4141" {% if area == "4141" %}selected{% endif %}>(041)</option>
+          <option value="4144" {% if area == "4144" %}selected{% endif %}>(044)</option>
+          <option value="4152" {% if area == "4152" %}selected{% endif %}>(052)</option>
+          <option value="4155" {% if area == "4155" %}selected{% endif %}>(055)</option>
+          <option value="4156" {% if area == "4156" %}selected{% endif %}>(056)</option>
+          <option value="4158" {% if area == "4158" %}selected{% endif %}>(058)</option>
+          <option value="4161" {% if area == "4161" %}selected{% endif %}>(061)</option>
+          <option value="4162" {% if area == "4162" %}selected{% endif %}>(062)</option>
+          <option value="4171" {% if area == "4171" %}selected{% endif %}>(071)</option>
+          <option value="4181" {% if area == "4181" %}selected{% endif %}>(081)</option>
+          <option value="4191" {% if area == "4191" %}selected{% endif %}>(091)</option>
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All status</option>
+          <option value="free"     {% if status == 'free'     %}selected{% endif %}>🟢 Free</option>
+          <option value="assigned" {% if status == 'assigned' %}selected{% endif %}>🔴 Assigned</option>
+          <option value="blocked"  {% if status == 'blocked'  %}selected{% endif %}>⚫ Blocked</option>
+          <option value="golden"   {% if status == 'golden'   %}selected{% endif %}>🟡 Golden</option>
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <select name="customer" class="form-select form-select-sm" style="min-width:160px" onchange="this.form.submit()">
+          <option value="">All customers</option>
+          {% for c in customers %}
+          <option value="{{ c.pk }}" {% if customer_id == c.pk|stringformat:"s" %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <select name="vendor" class="form-select form-select-sm" style="min-width:160px" onchange="this.form.submit()">
+          <option value="">All vendors</option>
+          {% for v in vendors %}
+          <option value="{{ v.pk }}" {% if vendor_id == v.pk|stringformat:"s" %}selected{% endif %}>
+            {{ v.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <button class="btn btn-sm btn-outline-secondary" type="submit" title="Apply text search">
+          <i class="bi bi-search"></i>
+        </button>
+        <a href="{% url 'ddi:number_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Number</th>
+          <th>Country</th>
+          <th>Customer</th>
+          <th>Vendor</th>
+          <th class="text-end">Buy Rate</th>
+          <th class="text-end">Sell Rate</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for num in page_obj %}
+        <tr>
+          <td><code>{{ num.number }}</code></td>
+          <td>{{ num.country }}</td>
+          <td>{{ num.customer.name|default:"—" }}</td>
+          <td>{{ num.vendor.name|default:"—" }}</td>
+          <td class="text-end">{% if num.buy_rate %}{{ num.buy_rate }}{% else %}—{% endif %}</td>
+          <td class="text-end">{% if num.sell_rate %}{{ num.sell_rate }}{% else %}—{% endif %}</td>
+          <td>
+            {% if not num.is_active %}
+              <span class="badge bg-dark">Blocked</span>
+            {% elif "Type: Golden" in num.notes %}
+              <span class="badge bg-warning text-dark">Golden</span>
+            {% elif num.customer %}
+              <span class="badge bg-danger">Assigned</span>
+            {% else %}
+              <span class="badge bg-success">Free</span>
+            {% endif %}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'ddi:number_edit' num.pk %}" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+            <a href="{% url 'ddi:number_delete' num.pk %}" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-center text-muted py-4">No DDI numbers match your filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?q={{ q }}&country={{ country }}&area={{ area }}&status={{ status }}&customer={{ customer_id }}&vendor={{ vendor_id }}&page={{ page_obj.previous_page_number }}">‹ Prev</a>
+    </li>
+    {% endif %}
+    <li class="page-item disabled">
+      <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    </li>
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?q={{ q }}&country={{ country }}&area={{ area }}&status={{ status }}&customer={{ customer_id }}&vendor={{ vendor_id }}&page={{ page_obj.next_page_number }}">Next ›</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

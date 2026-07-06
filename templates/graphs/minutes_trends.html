@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Minutes Trends{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Minutes Trends</h5>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <input type="date" name="from" value="{{ from_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <input type="date" name="to" value="{{ to_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <select name="granularity" class="form-select form-select-sm">
+          <option value="hour"  {% if request.GET.granularity == 'hour' %}selected{% endif %}>Hourly</option>
+          <option value="day"   {% if request.GET.granularity != 'hour' and request.GET.granularity != 'week' %}selected{% endif %}>Daily</option>
+          <option value="week"  {% if request.GET.granularity == 'week' %}selected{% endif %}>Weekly</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <canvas id="trendChart" height="90"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+new Chart(document.getElementById('trendChart').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: {{ labels_json|safe }},
+    datasets: [
+      {
+        label: 'Minutes',
+        data: {{ cust_json|safe }},
+        borderColor: '#0d6efd',
+        fill: true,
+        backgroundColor: 'rgba(13,110,253,0.1)',
+        tension: 0.3,
+        pointRadius: 2,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } } }
+  }
+});
+</script>
+{% endblock %}

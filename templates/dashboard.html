@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – LightUpNet{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col">
+    <h4 class="mb-0">Dashboard</h4>
+    <small class="text-muted">Minutes by hour comparison – past 4 weeks</small>
+  </div>
+</div>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-primary h-100">
+      <div class="card-body">
+        <div class="fs-2 fw-bold">{{ kpi.total_minutes|floatformat:0 }}</div>
+        <div class="small">Total Minutes (today)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-success h-100">
+      <div class="card-body">
+        <div class="fs-2 fw-bold">{{ kpi.gross_profit|floatformat:2 }}</div>
+        <div class="small">Gross Profit (today)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-info h-100">
+      <div class="card-body">
+        <div class="fs-2 fw-bold">{{ kpi.asr|floatformat:1 }}%</div>
+        <div class="small">ASR (today)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card text-bg-warning h-100">
+      <div class="card-body">
+        <div class="fs-2 fw-bold">{{ kpi.open_alerts }}</div>
+        <div class="small">Open Alerts</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hourly minutes chart -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Hourly Minutes – Last 4 Weeks</span>
+      </div>
+      <div class="card-body">
+        <canvas id="hourlyChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Switch Status</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr><th>Switch</th><th>Last Updated</th></tr>
+          </thead>
+          <tbody>
+            {% for sw in switches %}
+            <tr>
+              <td>{{ sw.name }}</td>
+              <td class="{% if sw.last_updated %}text-success{% else %}text-danger{% endif %}">
+                {{ sw.last_updated|default:"—" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted text-center py-3">No switches configured</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly summary table -->
+<div class="card">
+  <div class="card-header">Weekly Minute Totals</div>
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr><th>Week</th><th class="text-end">Minutes</th></tr>
+      </thead>
+      <tbody>
+        {% for week in weekly_totals %}
+        <tr>
+          <td>{{ week.label }}</td>
+          <td class="text-end">{{ week.minutes|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="2" class="text-center text-muted py-3">No data yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const hourlyData = {{ hourly_chart_data|safe }};
+const ctx = document.getElementById('hourlyChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: hourlyData.labels,
+    datasets: hourlyData.datasets.map((ds, i) => ({
+      label: ds.label,
+      data: ds.data,
+      borderWidth: 2,
+      fill: false,
+      tension: 0.3,
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { y: { beginAtZero: true, title: { display: true, text: 'Minutes' } } }
+  }
+});
+</script>
+{% endblock %}

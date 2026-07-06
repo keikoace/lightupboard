@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Portal Users – Setup{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Portal Users</h5>
+  <a href="{% url 'setup:portal_user_add' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-person-plus"></i> Add Portal User
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Username</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Company</th>
+          <th>Last Login</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in portal_users %}
+        <tr>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.get_full_name|default:"—" }}</td>
+          <td>{{ u.email|default:"—" }}</td>
+          <td>
+            {% for co in u.customer_companies.all %}
+              <a href="{% url 'setup:company_detail' co.pk %}" class="badge bg-secondary text-decoration-none me-1">
+                {{ co.name }}
+              </a>
+            {% endfor %}
+          </td>
+          <td class="text-muted small">
+            {{ u.last_login|date:"d M Y H:i"|default:"Never" }}
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <a href="{% url 'setup:portal_user_edit' u.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'setup:portal_user_revoke' u.pk %}" class="btn btn-sm btn-outline-danger" title="Revoke access">
+              <i class="bi bi-person-x"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">
+            No portal users yet.
+            <a href="{% url 'setup:portal_user_add' %}">Create the first one.</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

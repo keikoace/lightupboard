@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Drilldown Graphs{% endblock %}
+
+{% block content %}
+<h5 class="mb-3">Drilldown Graphs</h5>
+<p class="text-muted small">Top 20 results for the selected dimension and metric.</p>
+
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <select name="primary" class="form-select form-select-sm">
+          <option value="customer"    {% if primary == 'customer' %}selected{% endif %}>Customer</option>
+          <option value="supplier"    {% if primary == 'supplier' %}selected{% endif %}>Supplier</option>
+          <option value="destination" {% if primary == 'destination' %}selected{% endif %}>Destination</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="metric" class="form-select form-select-sm">
+          <option value="minutes" {% if metric == 'minutes' %}selected{% endif %}>Minutes</option>
+          <option value="gp"      {% if metric == 'gp' %}selected{% endif %}>Gross Profit</option>
+          <option value="revenue" {% if metric == 'revenue' %}selected{% endif %}>Revenue</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <input type="date" name="from" value="{{ from_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <input type="date" name="to" value="{{ to_d }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm btn-secondary" type="submit">Load</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <canvas id="drilldownChart" height="100"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const drillLabels = {{ labels_json|safe }};
+const drillValues = {{ values_json|safe }};
+
+new Chart(document.getElementById('drilldownChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: drillLabels,
+    datasets: [{ label: '{{ metric }}', data: drillValues, backgroundColor: 'rgba(13,110,253,0.75)' }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } },
+  }
+});
+</script>
+{% endblock %}
