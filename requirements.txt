@@ -4,3 +4,9 @@ crispy-bootstrap5>=0.7
 django-tables2>=2.6
 django-filter>=23.2
 whitenoise>=6.6
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+# Excel rate-notification imports (apps/rates, apps/ddi, apps/email_import)
+openpyxl>=3.1
+# Recurring-billing date maths (apps/finance/invoice_engine.py)
+python-dateutil>=2.8
