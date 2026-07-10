@@ -1,17 +1,38 @@
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'change-me-in-production'
+# Values in .env override nothing that is already set in the real environment.
+load_dotenv(BASE_DIR / '.env')
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+def env_bool(name, default):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
-CSRF_TRUSTED_ORIGINS = [
+
+def env_list(name, default):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'change-me-in-production')
+
+DEBUG = env_bool('DEBUG', True)
+
+ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', ['*'])
+
+CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-]
+])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,11 +62,11 @@ INSTALLED_APPS = [
 # ── Email Rate Import ──────────────────────────────────────────────────────────
 # Fill in your IMAP mailbox credentials below.
 RATE_IMPORT_IMAP = {
-    'HOST':     'imap.example.com',   # e.g. imap.gmail.com / outlook.office365.com
-    'PORT':     993,
-    'USERNAME': 'rates@yourdomain.com',
-    'PASSWORD': 'your-password',
-    'USE_SSL':  True,
+    'HOST':     os.environ.get('IMAP_HOST', 'imap.example.com'),
+    'PORT':     int(os.environ.get('IMAP_PORT', '993')),
+    'USERNAME': os.environ.get('IMAP_USERNAME', 'rates@yourdomain.com'),
+    'PASSWORD': os.environ.get('IMAP_PASSWORD', 'your-password'),
+    'USE_SSL':  env_bool('IMAP_USE_SSL', True),
 }
 
 MIDDLEWARE = [
@@ -80,16 +101,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE':   'django.db.backends.postgresql',
-        'NAME':     'lightupnet',
-        'USER':     'postgres',
-        'PASSWORD': 'Lozinka11',
-        'HOST':     'localhost',
-        'PORT':     '5432',
+# Set DB_ENGINE=sqlite for a credential-free local database. Note that the
+# rating pipeline (apps/qos/.../process_cdrs.py) takes a different code path on
+# SQLite than on PostgreSQL -- verify rating changes against PostgreSQL.
+if os.environ.get('DB_ENGINE', 'postgresql') == 'sqlite':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME':   BASE_DIR / os.environ.get('DB_NAME', 'db.sqlite3'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE':   'django.db.backends.postgresql',
+            'NAME':     os.environ.get('DB_NAME',     'lightupnet'),
+            'USER':     os.environ.get('DB_USER',     'postgres'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'Lozinka11'),
+            'HOST':     os.environ.get('DB_HOST',     'localhost'),
+            'PORT':     os.environ.get('DB_PORT',     '5432'),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
