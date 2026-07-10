@@ -30,6 +30,21 @@ def _billed_seconds(duration, minimum, increment):
     return minimum + math.ceil((duration - minimum) / increment) * increment
 
 
+def _billed_seconds_sql(minimum, increment):
+    """SQL expression mirroring _billed_seconds() for the switch_billed_sec column.
+
+    Callers must already have excluded switch_billed_sec <= 0.
+    """
+    minimum   = max(1, int(minimum))
+    increment = max(1, int(increment))
+    if minimum == 1 and increment == 1:
+        return 'switch_billed_sec'
+    return (
+        f'(CASE WHEN switch_billed_sec <= {minimum} THEN {minimum} '
+        f'ELSE {minimum} + CEIL((switch_billed_sec - {minimum})::numeric / {increment}) * {increment} END)'
+    )
+
+
 def _cost(billed_sec, rate_per_minute):
     if not billed_sec or not rate_per_minute:
         return Decimal('0')
@@ -59,7 +74,7 @@ class Command(BaseCommand):
         dry_run   = options['dry_run']
 
         is_pg = 'postgresql' in connection.settings_dict['ENGINE']
-        self.stdout.write(f'Engine: {"PostgreSQL ✓" if is_pg else "SQLite"}')
+        self.stdout.write(f'Engine: {"PostgreSQL" if is_pg else "SQLite"}')
 
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN — no writes.\n'))
@@ -138,15 +153,26 @@ class Command(BaseCommand):
             # Build CASE WHEN for sell_rate:
             # Origin-based entries: check BOTH ANI prefix AND DNIS prefix
             # Standard entries: check DNIS prefix only (fallback)
-            rate_cases   = []
+            # Each rate carries its own minimum/increment, so the billed-duration
+            # and revenue CASEs must repeat the same conditions in the same order.
+            rate_cases    = []
+            billed_cases  = []
             revenue_cases = []
+
+            def _add_case(condition, rate, minimum, increment):
+                billed = _billed_seconds_sql(minimum, increment)
+                rate_cases.append(f'WHEN {condition} THEN {rate:.6f}')
+                billed_cases.append(f'WHEN {condition} THEN ({billed})::int')
+                revenue_cases.append(
+                    f'WHEN {condition} THEN (({billed})::numeric / 60.0 * {rate:.6f})'
+                )
 
             # ANI-aware CASE entries for origin rates
             # Group by origin_group_id so we can build efficient CASE
             from collections import defaultdict
             by_group = defaultdict(list)
             for p, r, mn, inc, gid in origin_rates:
-                by_group[gid].append((p, r))
+                by_group[gid].append((p, r, mn, inc))
 
             for gid, group_rates in by_group.items():
                 # Find ANI prefixes for this group
@@ -154,27 +180,21 @@ class Command(BaseCommand):
                 if not ani_prefixes:
                     continue
                 for ani_pfx in sorted(ani_prefixes, key=len, reverse=True):
-                    for dnis_pfx, rate in sorted(group_rates, key=lambda x: -len(x[0])):
-                        rate_cases.append(
-                            f"WHEN ani LIKE '{ani_pfx}%' AND dnis LIKE '{dnis_pfx}%' THEN {rate:.6f}"
-                        )
-                        revenue_cases.append(
-                            f"WHEN ani LIKE '{ani_pfx}%' AND dnis LIKE '{dnis_pfx}%' THEN "
-                            f"(switch_billed_sec::numeric / 60.0 * {rate:.6f})"
+                    for dnis_pfx, rate, mn, inc in sorted(group_rates, key=lambda x: -len(x[0])):
+                        _add_case(
+                            f"ani LIKE '{ani_pfx}%' AND dnis LIKE '{dnis_pfx}%'", rate, mn, inc
                         )
 
             # Standard (non-origin) CASE entries
             for p, r, mn, inc in standard_rates:
-                rate_cases.append(f"WHEN dnis LIKE '{p}%' THEN {r:.6f}")
-                revenue_cases.append(
-                    f"WHEN dnis LIKE '{p}%' THEN (switch_billed_sec::numeric / 60.0 * {r:.6f})"
-                )
+                _add_case(f"dnis LIKE '{p}%'", r, mn, inc)
 
             if not rate_cases:
                 continue
 
-            sell_rate_case  = '\n          '.join(rate_cases)
-            revenue_case    = '\n          '.join(revenue_cases)
+            sell_rate_case   = '\n          '.join(rate_cases)
+            sell_billed_case = '\n            '.join(billed_cases)
+            revenue_case     = '\n            '.join(revenue_cases)
 
             where_clause = f"WHERE customer_id = {company_id}" + (
                 " AND is_processed = false" if not reprocess else ""
@@ -187,7 +207,9 @@ UPDATE {tbl} SET
           ELSE 0 END,
     sell_billed_duration_sec = CASE
           WHEN answer_time IS NOT NULL AND switch_billed_sec > 0
-          THEN switch_billed_sec
+          THEN CASE
+            {sell_billed_case}
+            ELSE switch_billed_sec END
           ELSE 0 END,
     sell_revenue = CASE
           WHEN answer_time IS NOT NULL AND switch_billed_sec > 0
@@ -197,10 +219,12 @@ UPDATE {tbl} SET
           ELSE 0 END,
     destination_id = CASE
           {dest_case}
-          ELSE destination_id END,
-    is_processed = true
+          ELSE destination_id END
 {where_clause}
 """
+            # NB: is_processed is deliberately NOT set here. The buy-side pass
+            # below still needs to select these rows on `is_processed = false`.
+            # All rows are marked processed in the cleanup step at the end.
             self.stdout.write(f'Running SQL UPDATE for customer_id={company_id}…')
             with connection.cursor() as cur:
                 cur.execute(sql)
@@ -220,8 +244,13 @@ UPDATE {tbl} SET
                 f"WHEN dnis LIKE '{p}%' THEN {r:.6f}"
                 for p, r, mn, inc, *_ in rates_sorted
             )
-            buy_revenue_case = '\n          '.join(
-                f"WHEN dnis LIKE '{p}%' THEN (switch_billed_sec::numeric / 60.0 * {r:.6f})"
+            buy_billed_case = '\n            '.join(
+                f"WHEN dnis LIKE '{p}%' THEN ({_billed_seconds_sql(mn, inc)})::int"
+                for p, r, mn, inc, *_ in rates_sorted
+            )
+            buy_revenue_case = '\n            '.join(
+                f"WHEN dnis LIKE '{p}%' THEN "
+                f"(({_billed_seconds_sql(mn, inc)})::numeric / 60.0 * {r:.6f})"
                 for p, r, mn, inc, *_ in rates_sorted
             )
 
@@ -236,7 +265,9 @@ UPDATE {tbl} SET
           ELSE 0 END,
     buy_billed_duration_sec = CASE
           WHEN answer_time IS NOT NULL AND switch_billed_sec > 0
-          THEN switch_billed_sec
+          THEN CASE
+            {buy_billed_case}
+            ELSE switch_billed_sec END
           ELSE 0 END,
     buy_cost = CASE
           WHEN answer_time IS NOT NULL AND switch_billed_sec > 0
@@ -253,12 +284,13 @@ UPDATE {tbl} SET
                 total_updated += n
             self.stdout.write(self.style.SUCCESS(f'  Updated {n:,} CDRs (buy side)'))
 
-        # Mark remaining unprocessed CDRs (no tariff match) as processed
+        # Mark every CDR seen by this run as processed - both the rows the passes
+        # above rated and any that matched no tariff at all.
         with connection.cursor() as cur:
             cur.execute(f"UPDATE {tbl} SET is_processed = true WHERE is_processed = false")
             n = cur.rowcount
             if n:
-                self.stdout.write(f'  Marked {n:,} CDRs processed (no tariff match)')
+                self.stdout.write(f'  Marked {n:,} CDRs processed')
 
         self.stdout.write(self.style.SUCCESS(f'\nDone. Total updated: {total_updated:,}'))
 
